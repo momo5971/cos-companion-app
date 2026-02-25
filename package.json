@@ -1,0 +1,8 @@
+{
+  "name": "curse-of-strahd-companion",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate-nodes": "node scripts/generateDecisionNodes.js"
+  }
+}
