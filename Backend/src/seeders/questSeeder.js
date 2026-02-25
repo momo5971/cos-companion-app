@@ -1,7 +1,7 @@
 import Quest from "../models/Quest.js";
 import Location from "../models/Location.js";
 
-export const seedQuests = async () => {
+export const seedQuests = async (campaignId) => {
   try {
     // First, get all locations from the database
     const locations = await Location.find({});
@@ -15,6 +15,7 @@ export const seedQuests = async () => {
     // Now create quests with proper location references
     const quests = [
       {
+        campaignId,
         title: "Death House",
         description: "Explore the haunted mansion on the outskirts of Barovia",
         act: "Act I",
@@ -25,6 +26,7 @@ export const seedQuests = async () => {
         connections: [],
       },
       {
+        campaignId,
         title: "Welcome to Barovia",
         description: "Arrive in the village and meet Ismark and Ireena",
         act: "Act I",
@@ -35,6 +37,7 @@ export const seedQuests = async () => {
         connections: [],
       },
       {
+        campaignId,
         title: "Tser Pool Encampment",
         description: "Meet Madam Eva and receive the Tarokka reading",
         act: "Act I",
@@ -45,6 +48,7 @@ export const seedQuests = async () => {
         connections: [],
       },
       {
+        campaignId,
         title: "Old Bonegrinder",
         description: "Investigate the windmill and the hags",
         act: "Act I",
@@ -55,6 +59,7 @@ export const seedQuests = async () => {
         connections: [],
       },
       {
+        campaignId,
         title: "The Town of Vallaki",
         description: "Enter the town of Vallaki and navigate its politics",
         act: "Act II",

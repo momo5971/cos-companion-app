@@ -1,6 +1,265 @@
+<script setup>
+import { onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useLocationStore } from "../stores/locationStore";
+import { useCampaignStore } from "../stores/campaignStore";
+
+const router = useRouter();
+const locationStore = useLocationStore();
+const campaignStore = useCampaignStore();
+
+onMounted(async () => {
+  const campaignId = campaignStore.activeCampaign?._id;
+  if (campaignId) {
+    await locationStore.fetchLocations(campaignId);
+  }
+});
+
+watch(
+  () => campaignStore.activeCampaign,
+  async (newCampaign) => {
+    if (newCampaign?._id) {
+      await locationStore.fetchLocations(newCampaign._id);
+    } else {
+      locationStore.locations = [];
+    }
+  },
+);
+
+function viewLocation(locationId) {
+  router.push(`/locations/${locationId}`);
+}
+
+function getTypeColor(type) {
+  const colors = {
+    city: "bg-blue-500",
+    dungeon: "bg-red-500",
+    wilderness: "bg-green-500",
+    landmark: "bg-purple-500",
+  };
+  return colors[type] || "bg-gray-500";
+}
+</script>
+
 <template>
-  <div>
-    <h2 class="text-2xl font-bold mb-4">Location Maps</h2>
-    <p>Location maps will go here</p>
+  <div class="locations-view animate-fade-in">
+    <!-- Page Header -->
+    <div class="relative mb-8">
+      <h2 class="text-4xl font-bold text-strahd-red text-glow-red">
+        Location Maps
+      </h2>
+      <div
+        class="absolute -bottom-2 left-0 w-32 h-1 bg-gradient-to-r from-strahd-red to-transparent"
+      ></div>
+      <p class="text-strahd-gold text-sm mt-3 opacity-80">
+        Explore interactive maps of Barovia's dark places
+      </p>
+    </div>
+
+    <!-- Loading state -->
+    <div
+      v-if="locationStore.loading"
+      class="flex flex-col items-center justify-center py-16"
+    >
+      <svg
+        class="w-12 h-12 text-strahd-red animate-spin mb-4"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <p class="text-xl text-strahd-gold">Loading locations...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else-if="locationStore.locations.length === 0" class="empty-state">
+      <svg
+        class="w-20 h-20 text-strahd-red/30 mb-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+        />
+      </svg>
+      <p class="text-xl text-gray-400">No locations available</p>
+    </div>
+
+    <!-- Locations grid -->
+    <div v-else class="locations-grid">
+      <div
+        v-for="location in locationStore.locations"
+        :key="location._id"
+        class="location-card group"
+        @click="viewLocation(location._id)"
+      >
+        <!-- Map Icon -->
+        <div class="map-icon">
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+            />
+          </svg>
+        </div>
+
+        <div class="card-header">
+          <h3
+            class="location-name group-hover:text-strahd-gold transition-colors"
+          >
+            {{ location.name }}
+          </h3>
+          <span class="location-type" :class="getTypeColor(location.type)">
+            {{ location.type }}
+          </span>
+        </div>
+
+        <p class="location-description">{{ location.description }}</p>
+
+        <div class="card-footer">
+          <div class="node-count">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>{{ location.nodes?.length || 0 }} nodes</span>
+          </div>
+          <div class="view-link">
+            <span>View Map</span>
+            <svg
+              class="w-4 h-4 transition-transform group-hover:translate-x-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.locations-view {
+  @apply p-6 max-w-7xl mx-auto;
+}
+
+.empty-state {
+  @apply flex flex-col items-center justify-center py-20;
+}
+
+.locations-grid {
+  @apply grid gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+}
+
+.location-card {
+  @apply relative bg-gradient-to-br from-strahd-dark to-strahd-darker;
+  @apply border-2 border-strahd-red/30 rounded-xl p-6 cursor-pointer;
+  @apply transition-all duration-300 shadow-xl;
+}
+
+.location-card:hover {
+  @apply border-strahd-gold shadow-glow-gold;
+  transform: translateY(-4px);
+}
+
+.map-icon {
+  @apply absolute -top-2 -right-2 w-10 h-10;
+  @apply bg-strahd-dark border-2 border-strahd-red rounded-full;
+  @apply flex items-center justify-center text-strahd-gold;
+  @apply shadow-lg transition-all duration-300;
+}
+
+.location-card:hover .map-icon {
+  @apply border-strahd-gold text-strahd-red shadow-glow-gold;
+  transform: rotate(12deg) scale(1.1);
+}
+
+.card-header {
+  @apply flex justify-between items-start gap-3 mb-4;
+}
+
+.location-name {
+  @apply text-2xl font-bold text-white flex-1;
+}
+
+.location-type {
+  @apply px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider;
+  @apply border-2 shadow-lg;
+}
+
+.location-type.bg-blue-500 {
+  @apply bg-blue-600/80 border-blue-400/50 text-white;
+}
+
+.location-type.bg-red-500 {
+  @apply bg-red-600/80 border-red-400/50 text-white;
+}
+
+.location-type.bg-green-500 {
+  @apply bg-green-600/80 border-green-400/50 text-white;
+}
+
+.location-type.bg-purple-500 {
+  @apply bg-purple-600/80 border-purple-400/50 text-white;
+}
+
+.location-type.bg-gray-500 {
+  @apply bg-gray-600/80 border-gray-400/50 text-white;
+}
+
+.location-description {
+  @apply text-gray-300 text-sm leading-relaxed mb-6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-footer {
+  @apply flex justify-between items-center pt-4;
+  @apply border-t border-strahd-red/20;
+}
+
+.node-count {
+  @apply flex items-center gap-2 text-strahd-gold text-sm font-semibold;
+}
+
+.view-link {
+  @apply flex items-center gap-2 text-strahd-gold font-semibold text-sm;
+}
+</style>

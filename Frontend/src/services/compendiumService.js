@@ -1,7 +1,8 @@
 import api from "./api";
 
-export const getAllEntries = () => {
-  return api.get("/compendium");
+export const getAllEntries = (campaignId) => {
+  const params = campaignId ? { campaignId } : {};
+  return api.get("/compendium", { params });
 };
 
 export const getEntryById = (id) => {

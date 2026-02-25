@@ -6,6 +6,23 @@ export const campaignSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    description: {
+      type: String,
+      default: "",
+    },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
+    lastPlayed: {
+      type: Date,
+      default: Date.now,
+    },
+    sessionNumber: {
+      type: Number,
+      default: 1,
+    },
+    // Quest tracking
     currentQuest: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quest",
@@ -16,16 +33,38 @@ export const campaignSchema = new mongoose.Schema(
         ref: "Quest",
       },
     ],
+    activeQuests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Quest",
+      },
+    ],
+    // Location tracking
     activeLocation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Location",
     },
+    // Decision nodes completion tracking
+    completedDecisionNodes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DecisionNode",
+      },
+    ],
+    // Location nodes completion tracking
+    completedLocationNodes: [
+      {
+        locationId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Location",
+        },
+        nodeName: String,
+      },
+    ],
+    // Notes
     notes: {
       type: String,
-    },
-    sessionNumber: {
-      type: Number,
-      default: 1,
+      default: "",
     },
   },
   {

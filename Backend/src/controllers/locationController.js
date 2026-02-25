@@ -2,7 +2,13 @@ import Location from "../models/Location.js";
 
 export const getAllLocations = async (req, res) => {
   try {
-    const locations = await Location.find();
+    const { campaignId } = req.query;
+
+    if (!campaignId) {
+      return res.status(200).json([]);
+    }
+
+    const locations = await Location.find({ campaignId });
     res.status(200).json(locations);
   } catch (error) {
     console.error("Error fetching locations", error);

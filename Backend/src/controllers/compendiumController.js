@@ -1,8 +1,22 @@
 import Compendium from "../models/Compendium.js";
+import StatBlock from "../models/StatBlock.js";
 
 export const getAllEntries = async (req, res) => {
   try {
-    const entries = await Compendium.find().populate("statBlock");
+    const { campaignId } = req.query;
+
+    if (!campaignId) {
+      return res.status(200).json([]);
+    }
+
+    const entries = await Compendium.find({ campaignId }).lean();
+
+    for (let entry of entries) {
+      if (entry.statBlock) {
+        entry.statBlock = await StatBlock.findById(entry.statBlock);
+      }
+    }
+
     res.status(200).json(entries);
   } catch (error) {
     console.error("Error fetching compendium entries", error);
@@ -15,9 +29,13 @@ export const getAllEntries = async (req, res) => {
 
 export const getEntryById = async (req, res) => {
   try {
-    const entry = await Compendium.findById(req.params.id).populate(
-      "statBlock",
-    );
+    const entry = await Compendium.findById(req.params.id).lean();
+
+    // Manually populate statBlock if it exists
+    if (entry && entry.statBlock) {
+      entry.statBlock = await StatBlock.findById(entry.statBlock);
+    }
+
     res.status(200).json(entry);
   } catch (error) {
     console.error("Error fetching compendium entry", error);
@@ -32,7 +50,9 @@ export const createEntry = async (req, res) => {
   try {
     const newEntry = new Compendium(req.body);
     const savedEntry = await newEntry.save();
-    await savedEntry.populate("statBlock");
+    if (savedEntry.statBlock) {
+      await savedEntry.populate("statBlock");
+    }
     res.status(201).json(savedEntry);
   } catch (error) {
     console.error("Error creating compendium entry", error);
@@ -49,9 +69,12 @@ export const updateEntry = async (req, res) => {
       req.params.id,
       req.body,
       { returnDocument: "after" },
-    ).populate("statBlock");
+    );
     if (!updatedEntry) {
       return res.status(404).json({ message: "Entry not found" });
+    }
+    if (updatedEntry.statBlock) {
+      await updatedEntry.populate("statBlock");
     }
     res.status(200).json(updatedEntry);
   } catch (error) {
@@ -91,7 +114,15 @@ export const searchEntries = async (req, res) => {
         { tags: { $regex: query, $options: "i" } },
         { description: { $regex: query, $options: "i" } },
       ],
-    }).populate("statBlock");
+    }).lean();
+
+    // Manually populate statBlock for entries that have it
+    for (let entry of entries) {
+      if (entry.statBlock) {
+        entry.statBlock = await StatBlock.findById(entry.statBlock);
+      }
+    }
+
     res.status(200).json(entries);
   } catch (error) {
     console.error("Error searching compendium entries", error);
@@ -105,7 +136,25 @@ export const searchEntries = async (req, res) => {
 export const getEntriesByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const entries = await Compendium.find({ category }).populate("statBlock");
+    const { campaignId } = req.query;
+
+    // Build filter
+    const filter = { category };
+    if (campaignId) {
+      filter.campaignId = campaignId;
+    }
+
+    const entries = await Compendium.find(filter).lean();
+
+    // Manually populate statBlock for NPCs and Monsters
+    if (category === "NPC" || category === "Monster") {
+      for (let entry of entries) {
+        if (entry.statBlock) {
+          entry.statBlock = await StatBlock.findById(entry.statBlock);
+        }
+      }
+    }
+
     res.status(200).json(entries);
   } catch (error) {
     console.error("Error fetching compendium entries by category", error);

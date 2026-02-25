@@ -1,9 +1,9 @@
 import api from "./api";
 
-export const getAllLocations = () => {
-  return api.get("/locations");
+export const getAllLocations = (campaignId) => {
+  const params = campaignId ? { campaignId } : {};
+  return api.get("/locations", { params });
 };
-
 export const getLocationById = (id) => {
   return api.get(`/locations/${id}`);
 };

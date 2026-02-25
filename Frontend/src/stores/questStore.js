@@ -10,11 +10,12 @@ export const useQuestStore = defineStore("quest", () => {
   const error = ref(null);
 
   //actions
-  async function fetchQuests() {
+  async function fetchQuests(campaignId) {
     loading.value = true;
     error.value = null;
+    quests.value = []; // Clear existing data first
     try {
-      quests.value = await questService.getAllQuests();
+      quests.value = await questService.getAllQuests(campaignId);
     } catch (err) {
       error.value = err.message;
     } finally {

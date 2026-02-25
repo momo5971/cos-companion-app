@@ -1,3 +1,260 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Gothic Theme Enhancements */
+@layer base {
+  body {
+    @apply bg-strahd-darker text-gray-100 font-body;
+    background-image:
+      radial-gradient(
+        circle at 20% 50%,
+        rgba(127, 29, 29, 0.1) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 80%,
+        rgba(88, 28, 135, 0.1) 0%,
+        transparent 50%
+      );
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-gothic;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #dc2626 #1a1a2e;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    @apply bg-strahd-dark;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    @apply bg-strahd-red rounded;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    @apply bg-strahd-blood;
+  }
+}
+
+@layer components {
+  /* Card Styles */
+  .card {
+    @apply bg-strahd-dark border border-strahd-red/30 rounded-lg p-6 shadow-lg;
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    @apply border-strahd-red/60 shadow-glow-red;
+    transform: translateY(-2px);
+  }
+
+  /* Button Styles */
+  .btn-primary {
+    @apply px-4 py-2 bg-strahd-red text-white rounded font-semibold;
+    @apply hover:bg-strahd-blood transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-strahd-red focus:ring-offset-2 focus:ring-offset-strahd-darker;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-strahd-dark border border-strahd-red text-strahd-gold rounded font-semibold;
+    @apply hover:bg-strahd-burgundy hover:border-strahd-blood transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-strahd-gold focus:ring-offset-2 focus:ring-offset-strahd-darker;
+  }
+
+  /* Input Styles */
+  .input {
+    @apply w-full px-3 py-2 bg-strahd-darker border border-strahd-red/50 rounded text-white;
+    @apply focus:outline-none focus:border-strahd-gold focus:ring-1 focus:ring-strahd-gold;
+    @apply placeholder-gray-500 transition-all duration-200;
+  }
+
+  .textarea {
+    @apply input resize-none;
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50;
+    animation: fadeIn 0.2s ease-in;
+  }
+
+  .modal-content {
+    @apply bg-strahd-dark border-2 border-strahd-red rounded-lg shadow-glow-red;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Badge Styles */
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .badge-success {
+    @apply badge bg-green-900/50 text-green-300 border border-green-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-900/50 text-yellow-300 border border-yellow-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-900/50 text-red-300 border border-red-700;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-900/50 text-blue-300 border border-blue-700;
+  }
+}
+
+@layer utilities {
+  /* Animation Utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .animate-slide-left {
+    animation: slideLeft 0.3s ease-out;
+  }
+
+  .animate-slide-right {
+    animation: slideRight 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounceSubtle 0.5s ease-out;
+  }
+
+  .animate-pulse-slow {
+    animation: pulseSlow 3s ease-in-out infinite;
+  }
+
+  /* Text Glow */
+  .text-glow-red {
+    text-shadow: 0 0 10px rgba(220, 38, 38, 0.8);
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+  }
+
+  /* Smooth Transitions */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-bounce {
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideRight {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceSubtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pulseSlow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

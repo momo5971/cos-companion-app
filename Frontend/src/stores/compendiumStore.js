@@ -10,11 +10,18 @@ export const useCompendiumStore = defineStore("compendium", () => {
   const error = ref(null);
 
   //actions
-  async function fetchEntries() {
+  async function fetchEntries(campaignId) {
     loading.value = true;
     error.value = null;
+    entries.value = []; // Clear existing data first
+
+    if (!campaignId) {
+      loading.value = false;
+      return; // Don't fetch if no campaign
+    }
+
     try {
-      entries.value = await compendiumService.getAllEntries();
+      entries.value = await compendiumService.getAllEntries(campaignId);
     } catch (err) {
       error.value = err.message;
     } finally {

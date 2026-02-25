@@ -21,6 +21,11 @@ const routes = [
     component: () => import("../views/LocationsView.vue"),
   },
   {
+    path: "/locations/:id",
+    name: "LocationDetail",
+    component: () => import("../views/LocationDetailView.vue"),
+  },
+  {
     path: "/compendium",
     name: "Compendium",
     component: () => import("../views/CompendiumView.vue"),

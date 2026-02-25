@@ -43,6 +43,11 @@ const decisionNodeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    campaignId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campaign",
+      required: true,
+    },
   },
   {
     timestamps: true,

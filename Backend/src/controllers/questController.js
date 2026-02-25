@@ -2,7 +2,13 @@ import Quest from "../models/Quest.js";
 
 export const getAllQuests = async (req, res) => {
   try {
-    const quests = await Quest.find().populate("location");
+    const { campaignId } = req.query;
+
+    if (!campaignId) {
+      return res.status(200).json([]);
+    }
+
+    const quests = await Quest.find({ campaignId }).populate("location");
     res.status(200).json(quests);
   } catch (error) {
     console.error("Error fetching quests", error);

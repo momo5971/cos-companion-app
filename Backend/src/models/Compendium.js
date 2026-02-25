@@ -24,10 +24,16 @@ const compendiumEntrySchema = new mongoose.Schema(
     imageUrl: {
       type: String,
     },
+    campaignId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campaign",
+      required: true,
+    },
   },
   {
     timestamps: true,
     discriminatorKey: "category",
+    strictPopulate: false,
   },
 );
 

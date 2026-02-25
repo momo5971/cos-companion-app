@@ -3,7 +3,15 @@ import DecisionNode from "../models/DecisionNode.js";
 // Get all decision nodes for a specific quest
 export const getDecisionNodesByQuest = async (req, res) => {
   try {
-    const nodes = await DecisionNode.find({ questId: req.params.questId });
+    const { campaignId } = req.query;
+
+    // Build filter
+    const filter = { questId: req.params.questId };
+    if (campaignId) {
+      filter.campaignId = campaignId;
+    }
+
+    const nodes = await DecisionNode.find(filter);
     res.status(200).json(nodes);
   } catch (error) {
     console.error("Error fetching decision nodes", error);

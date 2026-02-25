@@ -1,7 +1,8 @@
 import api from "./api";
 
-export const getAllQuests = () => {
-  return api.get("/quests");
+export const getAllQuests = (campaignId) => {
+  const params = campaignId ? { campaignId } : {};
+  return api.get("/quests", { params });
 };
 
 export const getQuestById = (id) => {

@@ -1,7 +1,7 @@
 import DecisionNode from "../models/DecisionNode.js";
 import Quest from "../models/Quest.js";
 
-export const seedDecisionNodes = async () => {
+export const seedDecisionNodes = async (campaignId) => {
   try {
     await DecisionNode.deleteMany({});
 
@@ -641,9 +641,10 @@ export const seedDecisionNodes = async () => {
       },
     ];
 
-    // Add questId to all nodes and convert nextNodes indices to empty arrays
+    // Add campaignId and questId to all nodes and convert nextNodes indices to empty arrays
     const nodes = nodeDefinitions.map((node) => ({
       ...node,
+      campaignId,
       questId: deathHouseQuest._id,
       nextNodes: [], // Will be populated after insertion
     }));

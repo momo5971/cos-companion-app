@@ -1,8 +1,10 @@
 <script setup>
 import { computed } from "vue";
 import { useDecisionNodeStore } from "../../stores/decisionNodeStore";
+import { useCampaignStore } from "../../stores/campaignStore";
 
 const decisionNodeStore = useDecisionNodeStore();
+const campaignStore = useCampaignStore();
 
 const props = defineProps({
   node: {
@@ -14,13 +16,27 @@ const props = defineProps({
 const emit = defineEmits(["viewDetails"]);
 
 async function toggleCompleted(event) {
-  event.preventDefault(); // Prevent context menu
-  event.stopPropagation(); // Prevent opening modal
+  event.preventDefault();
+  event.stopPropagation();
+
+  // Update the node in the database
   await decisionNodeStore.updateNodeStatus(
     props.node._id,
     !props.node.completed,
   );
+
+  // Track completion in the campaign
+  if (campaignStore.hasActiveCampaign) {
+    await campaignStore.toggleDecisionNodeCompletion(props.node._id);
+  }
 }
+
+const isCompleted = computed(() => {
+  if (campaignStore.hasActiveCampaign) {
+    return campaignStore.isDecisionNodeCompleted(props.node._id);
+  }
+  return props.node.completed;
+});
 
 // Computed style for positioning
 const nodeStyle = computed(() => {
@@ -56,7 +72,7 @@ function viewDetails() {
 <template>
   <div
     class="decision-node"
-    :class="[nodeTypeClass, { completed: node.completed }]"
+    :class="[nodeTypeClass, { completed: isCompleted }]"
     :style="nodeStyle"
     @click="viewDetails"
     @contextmenu="toggleCompleted"
@@ -66,7 +82,7 @@ function viewDetails() {
       <span class="node-icon">{{ nodeIcon }}</span>
       <span class="node-type-badge">{{ node.nodeType }}</span>
     </div>
-    <h3>{{ node.title }}</h3>
+    <h3 :class="{ 'line-through': isCompleted }">{{ node.title }}</h3>
     <p class="node-description">{{ node.description }}</p>
     <p v-if="node.consequences" class="consequences">
       <span class="label">→</span> {{ node.consequences }}
@@ -112,11 +128,11 @@ function viewDetails() {
 }
 
 .node-type-outcome {
-  @apply border-green-500;
+  @apply border-red-500;
 }
 
 .node-type-outcome h3 {
-  @apply text-green-400;
+  @apply text-red-400;
 }
 
 .node-type-event {

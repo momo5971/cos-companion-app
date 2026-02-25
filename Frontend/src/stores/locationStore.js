@@ -6,40 +6,22 @@ export const useLocationStore = defineStore("location", () => {
   //state
   const locations = ref([]);
   const currentLocation = ref(null);
-  const currentLocationNodes = ref(null);
   const loading = ref(false);
   const error = ref(null);
 
   //actions
-  async function fetchLocations() {
+  async function fetchLocations(campaignId) {
     loading.value = true;
     error.value = null;
-    try {
-      locations.value = await locationService.getAllLocations();
-    } catch (err) {
-      error.value = err.message;
-    } finally {
-      loading.value = false;
-    }
-  }
+    locations.value = []; // Clear existing data first
 
-  async function fetchLocationById(id) {
-    loading.value = true;
-    error.value = null;
-    try {
-      currentLocation.value = await locationService.getLocationById(id);
-    } catch (err) {
-      error.value = err.message;
-    } finally {
+    if (!campaignId) {
       loading.value = false;
+      return; // Don't fetch if no campaign
     }
-  }
 
-  async function fetchLocationNodes(id) {
-    loading.value = true;
-    error.value = null;
     try {
-      currentLocationNodes.value = await locationService.getLocationNodes(id);
+      locations.value = await locationService.getAllLocations(campaignId);
     } catch (err) {
       error.value = err.message;
     } finally {
@@ -60,7 +42,10 @@ export const useLocationStore = defineStore("location", () => {
 
   async function updateLocation(id, locationData) {
     try {
-      const updatedLocation = await locationService.updateLocation(id, locationData);
+      const updatedLocation = await locationService.updateLocation(
+        id,
+        locationData,
+      );
       const index = locations.value.findIndex((l) => l._id === id);
       if (index !== -1) {
         locations.value[index] = updatedLocation;
@@ -72,6 +57,24 @@ export const useLocationStore = defineStore("location", () => {
     } catch (err) {
       error.value = err.message;
       throw err;
+    }
+  }
+
+  async function updateLocationNodePosition(locationId, nodeName, position) {
+    try {
+      // Find the location
+      const location = this.locations.find((loc) => loc._id === locationId);
+      if (!location) return;
+
+      // Find and update the node
+      const node = location.nodes.find((n) => n.name === nodeName);
+      if (node) {
+        node.position = position;
+      }
+
+      await locationService.updateLocation(locationId, location);
+    } catch (error) {
+      console.error("Error updating node position:", error);
     }
   }
 
@@ -88,17 +91,119 @@ export const useLocationStore = defineStore("location", () => {
     }
   }
 
+  async function toggleNodeCompleted(locationId, nodeName) {
+    try {
+      const location = this.locations.find((loc) => loc._id === locationId);
+      if (!location) return;
+
+      const node = location.nodes.find((n) => n.name === nodeName);
+      if (node) {
+        node.completed = !node.completed;
+        await locationService.updateLocation(locationId, location);
+      }
+    } catch (error) {
+      console.error("Error toggling node completed:", error);
+    }
+  }
+
+  async function createNode(locationId, nodeData) {
+    try {
+      const location = this.locations.find((loc) => loc._id === locationId);
+      if (!location) return;
+
+      // Add the new node
+      location.nodes.push(nodeData);
+
+      await locationService.updateLocation(locationId, location);
+    } catch (error) {
+      console.error("Error creating node:", error);
+    }
+  }
+
+  async function updateNode(locationId, nodeName, updates) {
+    try {
+      const locationIndex = locations.value.findIndex(
+        (loc) => loc._id === locationId,
+      );
+      if (locationIndex === -1) return;
+
+      const location = locations.value[locationIndex];
+      const nodeIndex = location.nodes.findIndex((n) => n.name === nodeName);
+
+      if (nodeIndex !== -1) {
+        // Create a new nodes array to trigger reactivity
+        const updatedNodes = [...location.nodes];
+        updatedNodes[nodeIndex] = {
+          ...updatedNodes[nodeIndex],
+          ...updates,
+        };
+
+        // Update the location with new nodes array
+        locations.value[locationIndex] = {
+          ...location,
+          nodes: updatedNodes,
+        };
+
+        await locationService.updateLocation(
+          locationId,
+          locations.value[locationIndex],
+        );
+      }
+    } catch (error) {
+      console.error("Error updating node:", error);
+    }
+  }
+
+  async function deleteNode(locationId, nodeName) {
+    try {
+      const location = this.locations.find((loc) => loc._id === locationId);
+      if (!location) return;
+
+      // Remove the node
+      location.nodes = location.nodes.filter((n) => n.name !== nodeName);
+
+      await locationService.updateLocation(locationId, location);
+    } catch (error) {
+      console.error("Error deleting node:", error);
+    }
+  }
+
+  async function clearAllNodes(locationId) {
+    try {
+      const locationIndex = locations.value.findIndex(
+        (loc) => loc._id === locationId,
+      );
+      if (locationIndex === -1) return;
+
+      // Create a new location object with empty nodes array to trigger reactivity
+      locations.value[locationIndex] = {
+        ...locations.value[locationIndex],
+        nodes: [],
+      };
+
+      await locationService.updateLocation(
+        locationId,
+        locations.value[locationIndex],
+      );
+    } catch (error) {
+      console.error("Error clearing nodes:", error);
+    }
+  }
+
   return {
     locations,
     currentLocation,
-    currentLocationNodes,
     loading,
     error,
     fetchLocations,
-    fetchLocationById,
-    fetchLocationNodes,
     createLocation,
     updateLocation,
+    updateLocationNodePosition,
+    toggleNodeCompleted,
+    createNode,
+    updateNode,
+    deleteNode,
     deleteLocation,
+    clearAllNodes,
   };
 });

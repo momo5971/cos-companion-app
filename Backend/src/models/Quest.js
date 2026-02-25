@@ -45,6 +45,11 @@ const questSchema = new mongoose.Schema(
         },
       },
     ],
+    campaignId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campaign",
+      required: true,
+    },
   },
   {
     timestamps: true,
