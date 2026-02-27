@@ -4,11 +4,17 @@ import { useRoute, useRouter } from "vue-router";
 import { useQuestStore } from "../stores/questStore";
 import { useCampaignStore } from "../stores/campaignStore";
 import DecisionFlowchart from "../components/DecisionFlowchart/DecisionFlowchart.vue";
+import CreateQuestModal from "../components/Quest/CreateQuestModal.vue";
+import { ref } from "vue";
+import { useCompendiumNavigation } from "../composables/useCompendiumNavigation";
 
 const route = useRoute();
 const router = useRouter();
 const questStore = useQuestStore();
 const campaignStore = useCampaignStore();
+const decisionFlowchartRef = ref(null);
+const showEditModal = ref(false);
+const { navigateToCompendiumEntry } = useCompendiumNavigation();
 
 onMounted(() => {
   questStore.fetchQuestById(route.params.id);
@@ -16,6 +22,21 @@ onMounted(() => {
 
 function goBack() {
   router.push("/quests");
+}
+
+function openCreateNodeModal() {
+  if (decisionFlowchartRef.value) {
+    decisionFlowchartRef.value.openCreateModal();
+  }
+}
+
+function openEditModal() {
+  showEditModal.value = true;
+}
+
+async function handleQuestUpdated() {
+  showEditModal.value = false;
+  await questStore.fetchQuestById(route.params.id);
 }
 
 // Get quest status from campaign
@@ -50,7 +71,6 @@ function getStatusClass(status) {
 
 async function markAsActive() {
   if (!campaignStore.hasActiveCampaign) {
-    alert("Please select a campaign first");
     return;
   }
   await campaignStore.addActiveQuest(questStore.currentQuest._id);
@@ -58,7 +78,6 @@ async function markAsActive() {
 
 async function markAsCompleted() {
   if (!campaignStore.hasActiveCampaign) {
-    alert("Please select a campaign first");
     return;
   }
   await campaignStore.addCompletedQuest(questStore.currentQuest._id);
@@ -67,6 +86,20 @@ async function markAsCompleted() {
 async function removeFromActive() {
   if (!campaignStore.hasActiveCampaign) return;
   await campaignStore.removeActiveQuest(questStore.currentQuest._id);
+}
+
+function openLocationInCompendium() {
+  const location = questStore.currentQuest?.location;
+  if (location?.name) {
+    navigateToCompendiumEntry(location.name, 'Location');
+  }
+}
+
+function openQuestInCompendium() {
+  const quest = questStore.currentQuest;
+  if (quest?.title) {
+    navigateToCompendiumEntry(quest.title, 'Quest');
+  }
 }
 </script>
 
@@ -92,31 +125,57 @@ async function removeFromActive() {
     <!-- Quest Details -->
     <div v-else-if="questStore.currentQuest" class="quest-detail">
       <div class="quest-header">
-        <h2 class="text-4xl font-bold text-strahd-red text-glow-red mb-4">
+        <h2 
+          class="text-4xl font-bold text-strahd-red text-glow-red mb-4 quest-title-clickable"
+          @click="openQuestInCompendium"
+          title="View in Compendium"
+        >
           {{ questStore.currentQuest.title }}
         </h2>
         
         <div class="flex flex-wrap gap-3 mb-6 items-center">
-          <!-- Act Badge -->
-          <span class="badge badge-act">
+          <!-- Section Badge -->
+          <span v-if="questStore.currentQuest.section" class="badge badge-act">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
             </svg>
-            {{ questStore.currentQuest.act }}
+            {{ questStore.currentQuest.section.name }}
           </span>
 
           <!-- Location Badge -->
-          <span class="badge badge-location">
+          <span 
+            v-if="questStore.currentQuest.location"
+            class="badge badge-location clickable-badge"
+            @click="openLocationInCompendium"
+            title="View in Compendium"
+          >
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
             </svg>
-            {{ questStore.currentQuest.location?.name || "Unknown" }}
+            {{ questStore.currentQuest.location.name }}
+          </span>
+          <span v-else class="badge badge-location">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+            </svg>
+            No Location
           </span>
 
           <!-- Status Badge -->
           <span class="status-badge" :class="getStatusClass(questStatus)">
             {{ questStatus }}
           </span>
+
+          <!-- Edit Button -->
+          <button
+            @click="openEditModal"
+            class="edit-quest-btn"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            Edit Quest
+          </button>
 
           <!-- Quest Action Buttons -->
           <div class="flex gap-2 ml-auto">
@@ -198,15 +257,33 @@ async function removeFromActive() {
 
       <!-- Decision Flowchart Section -->
       <div class="flowchart-section">
-        <div class="flex items-center gap-3 mb-6">
-          <svg class="w-8 h-8 text-strahd-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-          </svg>
-          <h3 class="text-3xl font-bold text-strahd-red text-glow-red">Decision Paths</h3>
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <svg class="w-8 h-8 text-strahd-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            <h3 class="text-3xl font-bold text-strahd-red text-glow-red">Decision Paths</h3>
+          </div>
+          <button @click="openCreateNodeModal" class="create-node-btn">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create Node
+          </button>
         </div>
-        <DecisionFlowchart :questId="questStore.currentQuest._id" />
+        <div class="flowchart-wrapper">
+          <DecisionFlowchart ref="decisionFlowchartRef" :questId="questStore.currentQuest._id" />
+        </div>
       </div>
     </div>
+
+    <!-- Edit Quest Modal -->
+    <CreateQuestModal 
+      :show="showEditModal"
+      :quest="questStore.currentQuest"
+      @close="showEditModal = false"
+      @updated="handleQuestUpdated"
+    />
   </div>
 </template>
 
@@ -236,6 +313,23 @@ async function removeFromActive() {
 
 .badge-location {
   @apply bg-strahd-purple/30 border-purple-500/50 text-purple-300;
+}
+
+.clickable-badge {
+  @apply cursor-pointer;
+  @apply hover:bg-strahd-purple/50 hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)];
+  @apply hover:scale-105;
+}
+
+.quest-title-clickable {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.quest-title-clickable:hover {
+  color: #d4af37;
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+  transform: scale(1.02);
 }
 
 .status-badge {
@@ -310,6 +404,45 @@ async function removeFromActive() {
 
 .flowchart-section {
   @apply bg-strahd-darker/50 border-2 border-strahd-red/30 rounded-xl p-6;
-  @apply min-h-[500px];
+  height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.flowchart-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.create-node-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #8b0000;
+  border: 2px solid #8b0000;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.create-node-btn:hover {
+  background: #a00000;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.edit-quest-btn {
+  @apply flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm;
+  @apply bg-blue-600/80 border-2 border-blue-500 text-white;
+  @apply transition-all duration-200 shadow-lg;
+}
+
+.edit-quest-btn:hover {
+  @apply bg-blue-700;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
 }
 </style>

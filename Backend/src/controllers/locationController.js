@@ -67,13 +67,103 @@ export const updateLocation = async (req, res) => {
 
 export const deleteLocation = async (req, res) => {
   try {
-    const deletedLocation = await Location.findByIdAndDelete(req.params.id);
+    const locationId = req.params.id;
+    const Quest = (await import("../models/Quest.js")).default;
+    const Compendium = (await import("../models/Compendium.js")).default;
+
+    console.log(
+      `[DELETE LOCATION] Starting deletion for location: ${locationId}`,
+    );
+
+    // Recursive function to delete a location and its children
+    async function deleteLocationRecursive(locId) {
+      const location = await Location.findById(locId);
+      if (!location) {
+        console.log(`[DELETE LOCATION] Location ${locId} not found, skipping`);
+        return;
+      }
+
+      console.log(
+        `[DELETE LOCATION] Processing location: ${location.name} (${locId})`,
+      );
+
+      // Find quests that reference this location BEFORE updating
+      const questsToUpdate = await Quest.find({ location: locId });
+      console.log(
+        `[DELETE LOCATION] Found ${questsToUpdate.length} quests referencing this location:`,
+        questsToUpdate.map((q) => q.title),
+      );
+
+      // Update any quests that reference this location to set location to null
+      const updateResult = await Quest.updateMany(
+        { location: locId },
+        { $set: { location: null } },
+      );
+      console.log(
+        `[DELETE LOCATION] Updated ${updateResult.modifiedCount} quests, set location to null`,
+      );
+
+      // Verify the update
+      const verifyQuests = await Quest.find({
+        _id: { $in: questsToUpdate.map((q) => q._id) },
+      });
+      console.log(
+        `[DELETE LOCATION] After update, quests still exist:`,
+        verifyQuests.map((q) => ({ title: q.title, location: q.location })),
+      );
+
+      // Delete corresponding compendium entry
+      const compendiumResult = await Compendium.deleteOne({
+        category: "Location",
+        title: location.name,
+        campaignId: location.campaignId,
+      });
+      console.log(
+        `[DELETE LOCATION] Deleted ${compendiumResult.deletedCount} compendium entries`,
+      );
+
+      // Find and delete all child locations recursively
+      const childLocations = await Location.find({ parentLocationId: locId });
+      console.log(
+        `[DELETE LOCATION] Found ${childLocations.length} child locations`,
+      );
+      for (const child of childLocations) {
+        await deleteLocationRecursive(child._id);
+      }
+
+      // Delete the location itself
+      await Location.findByIdAndDelete(locId);
+      console.log(`[DELETE LOCATION] Deleted location: ${location.name}`);
+    }
+
+    const deletedLocation = await Location.findById(locationId);
+
     if (!deletedLocation) {
+      console.log(`[DELETE LOCATION] Location ${locationId} not found`);
       return res.status(404).json({ message: "Location not found" });
     }
+
+    // If this location has a parent, remove any nodes in the parent that link to this location
+    if (deletedLocation.parentLocationId) {
+      await Location.findByIdAndUpdate(deletedLocation.parentLocationId, {
+        $pull: {
+          nodes: { linkedLocationId: locationId },
+        },
+      });
+      console.log(
+        `[DELETE LOCATION] Removed linking nodes from parent location`,
+      );
+    }
+
+    // Delete the location and all its children recursively
+    await deleteLocationRecursive(locationId);
+
+    console.log(
+      `[DELETE LOCATION] Deletion complete for location: ${locationId}`,
+    );
     res.status(200).json({ message: "Location deleted successfully" });
   } catch (error) {
-    console.error("Error deleting location", error);
+    console.error("[DELETE LOCATION] Error deleting location", error);
     res
       .status(500)
       .json({ message: "Error deleting location", error: error.message });

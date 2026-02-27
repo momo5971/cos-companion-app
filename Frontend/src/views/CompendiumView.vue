@@ -1,24 +1,62 @@
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onUnmounted } from "vue";
 import { useCompendiumStore } from "../stores/compendiumStore";
 import { useCampaignStore } from "../stores/campaignStore";
 import CompendiumModal from "../components/Compendium/CompendiumModal.vue";
+import CreateCompendiumEntryModal from "../components/Compendium/CreateCompendiumEntryModal.vue";
 import Fuse from "fuse.js";
+import { useRoute, useRouter } from "vue-router";
 
 const compendiumStore = useCompendiumStore();
 const campaignStore = useCampaignStore();
+const route = useRoute();
+const router = useRouter();
 
 const searchQuery = ref("");
 const selectedCategory = ref("all");
 const selectedEntry = ref(null);
 const isModalOpen = ref(false);
+const showCreateModal = ref(false);
 
 onMounted(async () => {
   const campaignId = campaignStore.activeCampaign?._id;
   if (campaignId) {
     await compendiumStore.fetchEntries(campaignId);
+  } else {
+    compendiumStore.$patch({ entries: [] });
   }
+
+  // Check if there's an entry to open from query parameters
+  if (route.query.openEntry && route.query.category) {
+    const entry = compendiumStore.entries.find(
+      e => e.title === route.query.openEntry && e.category === route.query.category
+    );
+    
+    if (entry) {
+      // Open the modal after a short delay to ensure everything is rendered
+      setTimeout(() => {
+        viewDetails(entry);
+        // Clean up query parameters
+        router.replace({ name: 'Compendium' });
+      }, 100);
+    }
+  }
+
+  // Listen for custom event to open specific entry
+  window.addEventListener('open-compendium-entry', handleOpenEntry);
 });
+
+// Cleanup event listener
+onUnmounted(() => {
+  window.removeEventListener('open-compendium-entry', handleOpenEntry);
+});
+
+function handleOpenEntry(event) {
+  const entry = event.detail;
+  if (entry) {
+    viewDetails(entry);
+  }
+}
 
 watch(
   () => campaignStore.activeCampaign,
@@ -26,7 +64,7 @@ watch(
     if (newCampaign?._id) {
       await compendiumStore.fetchEntries(newCampaign._id);
     } else {
-      compendiumStore.entries = [];
+      compendiumStore.$patch({ entries: [] });
     }
   },
 );
@@ -36,6 +74,8 @@ const categories = [
   { value: "NPC", label: "NPCs" },
   { value: "Monster", label: "Monsters" },
   { value: "Item", label: "Items" },
+  { value: "Quest", label: "Quests" },
+  { value: "Location", label: "Locations" },
 ];
 
 // Fuse.js configuration for fuzzy search
@@ -82,6 +122,8 @@ function getCategoryColor(category) {
     NPC: "bg-blue-500",
     Monster: "bg-red-500",
     Item: "bg-purple-500",
+    Quest: "bg-green-500",
+    Location: "bg-yellow-500",
   };
   return colors[category] || "bg-gray-500";
 }
@@ -93,8 +135,30 @@ function getCategoryIcon(category) {
     NPC: "👤",
     Monster: "🐉",
     Item: "⚔️",
+    Quest: "📜",
+    Location: "🗺️",
   };
   return icons[category] || "📖";
+}
+
+async function deleteEntry(entryId, event) {
+  event.stopPropagation();
+  
+  try {
+    await compendiumStore.deleteEntry(entryId);
+    if (campaignStore.activeCampaign?._id) {
+      await compendiumStore.fetchEntries(campaignStore.activeCampaign._id);
+    }
+  } catch (error) {
+    console.error('Error deleting entry:', error);
+  }
+}
+
+async function handleEntryCreated() {
+  showCreateModal.value = false;
+  if (campaignStore.activeCampaign?._id) {
+    await compendiumStore.fetchEntries(campaignStore.activeCampaign._id);
+  }
 }
 </script>
 
@@ -102,15 +166,29 @@ function getCategoryIcon(category) {
   <div class="compendium-view animate-fade-in">
     <!-- Header -->
     <div class="relative mb-8">
-      <h2 class="text-4xl font-bold text-strahd-red text-glow-red">
-        Compendium
-      </h2>
-      <div
-        class="absolute -bottom-2 left-0 w-32 h-1 bg-gradient-to-r from-strahd-red to-transparent"
-      ></div>
-      <p class="text-strahd-gold text-sm mt-3 opacity-80">
-        Browse NPCs, monsters, and items of Barovia
-      </p>
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-4xl font-bold text-strahd-red text-glow-red">
+            Compendium
+          </h2>
+          <div
+            class="absolute -bottom-2 left-0 w-32 h-1 bg-gradient-to-r from-strahd-red to-transparent"
+          ></div>
+          <p class="text-strahd-gold text-sm mt-3 opacity-80">
+            Browse NPCs, monsters, items, quests, and locations of Barovia
+          </p>
+        </div>
+        <button
+          @click="showCreateModal = true"
+          class="create-entry-btn"
+          :disabled="!campaignStore.hasActiveCampaign"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Create Entry
+        </button>
+      </div>
     </div>
 
     <!-- Search and Filter Bar -->
@@ -135,6 +213,7 @@ function getCategoryIcon(category) {
           type="text"
           placeholder="Search the dark archives..."
           class="search-input"
+          autocomplete="off"
         />
         <div v-if="searchQuery" class="clear-btn" @click="searchQuery = ''">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -250,6 +329,17 @@ function getCategoryIcon(category) {
           </span>
         </div>
 
+        <!-- Delete Button -->
+        <button
+          @click="deleteEntry(entry._id, $event)"
+          class="delete-entry-btn"
+          title="Delete entry"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+
         <!-- Entry Image -->
         <div v-if="entry.imageUrl" class="entry-image">
           <img :src="entry.imageUrl" :alt="entry.title" />
@@ -306,12 +396,35 @@ function getCategoryIcon(category) {
       :entry="selectedEntry"
       @close="closeModal"
     />
+
+    <!-- Create Entry Modal -->
+    <CreateCompendiumEntryModal
+      :show="showCreateModal"
+      @close="showCreateModal = false"
+      @created="handleEntryCreated"
+    />
   </div>
 </template>
 
 <style scoped>
 .compendium-view {
   @apply p-6 max-w-7xl mx-auto;
+}
+
+.create-entry-btn {
+  @apply flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm;
+  @apply bg-strahd-red border-2 border-strahd-red text-white;
+  @apply transition-all duration-200 shadow-lg;
+}
+
+.create-entry-btn:hover:not(:disabled) {
+  @apply bg-strahd-blood;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.create-entry-btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 
 .search-bar {
@@ -406,6 +519,14 @@ function getCategoryIcon(category) {
   @apply bg-purple-600/80 border-2 border-purple-400/50;
 }
 
+.category-badge.bg-green-500 {
+  @apply bg-green-600/80 border-2 border-green-400/50;
+}
+
+.category-badge.bg-yellow-500 {
+  @apply bg-yellow-600/80 border-2 border-yellow-400/50;
+}
+
 .entry-image {
   @apply relative w-full h-48 overflow-hidden rounded-lg mb-4;
   @apply bg-strahd-darker border border-strahd-red/20;
@@ -443,5 +564,30 @@ function getCategoryIcon(category) {
 .tag {
   @apply px-2 py-1 bg-strahd-darker/50 border border-strahd-red/20 rounded-md;
   @apply text-xs text-strahd-gold font-medium;
+}
+
+.delete-entry-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(139, 0, 0, 0.8);
+  border: 1px solid #8b0000;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.entry-card:hover .delete-entry-btn {
+  opacity: 1;
+}
+
+.delete-entry-btn:hover {
+  background: #a00000;
+  box-shadow: 0 0 15px rgba(139, 0, 0, 0.6);
+  transform: scale(1.1);
 }
 </style>

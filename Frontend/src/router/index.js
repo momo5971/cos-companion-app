@@ -30,6 +30,11 @@ const routes = [
     name: "Compendium",
     component: () => import("../views/CompendiumView.vue"),
   },
+  {
+    path: "/timeline",
+    name: "Timeline",
+    component: () => import("../views/TimelineView.vue"),
+  },
 ];
 
 const router = createRouter({

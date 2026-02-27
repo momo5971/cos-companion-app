@@ -5,8 +5,11 @@ import connectDB from "./config/database.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
 import questRoutes from "./routes/questRoutes.js";
+import questSectionRoutes from "./routes/questSectionRoutes.js";
 import compendiumRoutes from "./routes/compendiumRoutes.js";
 import decisionNodeRoutes from "./routes/decisionNodeRoutes.js";
+import timelineRoutes from "./routes/timelineRoutes.js";
+import sectionRoutes from "./routes/sectionRoutes.js";
 
 dotenv.config();
 
@@ -14,7 +17,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Connect to MongoDB
 connectDB();
@@ -27,8 +31,11 @@ app.get("/", (req, res) => {
 app.use("/api/locations", locationRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/quests", questRoutes);
+app.use("/api/quest-sections", questSectionRoutes);
 app.use("/api/compendium", compendiumRoutes);
 app.use("/api/decision-nodes", decisionNodeRoutes);
+app.use("/api/timeline", timelineRoutes);
+app.use("/api/sections", sectionRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

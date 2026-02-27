@@ -8,7 +8,9 @@ export const getAllQuests = async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const quests = await Quest.find({ campaignId }).populate("location");
+    const quests = await Quest.find({ campaignId })
+      .populate("location")
+      .populate("section");
     res.status(200).json(quests);
   } catch (error) {
     console.error("Error fetching quests", error);
@@ -20,7 +22,9 @@ export const getAllQuests = async (req, res) => {
 
 export const getQuestById = async (req, res) => {
   try {
-    const quest = await Quest.findById(req.params.id).populate("location");
+    const quest = await Quest.findById(req.params.id)
+      .populate("location")
+      .populate("section");
     if (!quest) {
       return res.status(404).json({ message: "Quest not found" });
     }
@@ -38,6 +42,7 @@ export const createQuest = async (req, res) => {
     const newQuest = new Quest(req.body);
     const savedQuest = await newQuest.save();
     await savedQuest.populate("location");
+    await savedQuest.populate("section");
     res.status(201).json(savedQuest);
   } catch (error) {
     console.error("Error creating quest", error);
@@ -49,14 +54,63 @@ export const createQuest = async (req, res) => {
 
 export const updateQuest = async (req, res) => {
   try {
-    const updatedQuest = await Quest.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { returnDocument: "after" },
-    ).populate("location");
+    const questId = req.params.id;
+    const updatedQuest = await Quest.findByIdAndUpdate(questId, req.body, {
+      returnDocument: "after",
+    })
+      .populate("location")
+      .populate("section");
+
     if (!updatedQuest) {
       return res.status(404).json({ message: "Quest not found" });
     }
+
+    // Update corresponding compendium entry using questId
+    const Compendium = (await import("../models/Compendium.js")).default;
+
+    // First try to find by questId
+    let updateResult = await Compendium.updateOne(
+      {
+        category: "Quest",
+        questId: questId,
+      },
+      {
+        $set: {
+          title: updatedQuest.title,
+          description: updatedQuest.description || "A quest in the campaign.",
+          tags: ["quest", updatedQuest.status || "available"],
+          location: updatedQuest.location?.name || "No Location",
+          details: updatedQuest.description || "",
+          questStatus: updatedQuest.status || "available",
+          questObjectives: updatedQuest.rewards || [],
+          questId: questId, // Also set questId for future updates
+        },
+      },
+    );
+
+    // If no match found, try to find by campaignId (for old entries without questId)
+    if (updateResult.matchedCount === 0) {
+      updateResult = await Compendium.updateOne(
+        {
+          category: "Quest",
+          campaignId: updatedQuest.campaignId,
+          questId: { $exists: false },
+        },
+        {
+          $set: {
+            title: updatedQuest.title,
+            description: updatedQuest.description || "A quest in the campaign.",
+            tags: ["quest", updatedQuest.status || "available"],
+            location: updatedQuest.location?.name || "No Location",
+            details: updatedQuest.description || "",
+            questStatus: updatedQuest.status || "available",
+            questObjectives: updatedQuest.rewards || [],
+            questId: questId, // Set questId for future updates
+          },
+        },
+      );
+    }
+
     res.status(200).json(updatedQuest);
   } catch (error) {
     console.error("Error updating quest", error);
@@ -68,10 +122,24 @@ export const updateQuest = async (req, res) => {
 
 export const deleteQuest = async (req, res) => {
   try {
-    const deletedQuest = await Quest.findByIdAndDelete(req.params.id);
+    const questId = req.params.id;
+    const deletedQuest = await Quest.findById(questId);
+
     if (!deletedQuest) {
       return res.status(404).json({ message: "Quest not found" });
     }
+
+    // Delete the quest
+    await Quest.findByIdAndDelete(questId);
+
+    // Delete corresponding compendium entry
+    const Compendium = (await import("../models/Compendium.js")).default;
+    await Compendium.deleteOne({
+      category: "Quest",
+      title: deletedQuest.title,
+      campaignId: deletedQuest.campaignId,
+    });
+
     res.status(200).json({ message: "Quest deleted successfully" });
   } catch (error) {
     console.error("Error deleting quest", error);
@@ -91,7 +159,9 @@ export const updateQuestStatus = async (req, res) => {
       req.params.id,
       { status },
       { returnDocument: "after" },
-    ).populate("location");
+    )
+      .populate("location")
+      .populate("section");
     if (!updatedQuest) {
       return res.status(404).json({ message: "Quest not found" });
     }

@@ -4,6 +4,7 @@ import * as campaignService from "../services/campaignService";
 import { useQuestStore } from "./questStore";
 import { useLocationStore } from "./locationStore";
 import { useCompendiumStore } from "./compendiumStore";
+import { useTimelineStore } from "./timelineStore";
 
 export const useCampaignStore = defineStore("campaign", () => {
   // State
@@ -112,9 +113,21 @@ export const useCampaignStore = defineStore("campaign", () => {
     try {
       await campaignService.deleteCampaign(id);
       campaigns.value = campaigns.value.filter((c) => c._id !== id);
+
       if (activeCampaign.value?._id === id) {
         activeCampaign.value = null;
         localStorage.removeItem("activeCampaignId");
+
+        // Clear all stores immediately
+        const questStore = useQuestStore();
+        const locationStore = useLocationStore();
+        const compendiumStore = useCompendiumStore();
+        const timelineStore = useTimelineStore();
+
+        questStore.$patch({ quests: [] });
+        locationStore.$patch({ locations: [] });
+        compendiumStore.$patch({ entries: [] });
+        timelineStore.$patch({ events: [] });
       }
     } catch (err) {
       error.value = err.message;
@@ -166,11 +179,13 @@ export const useCampaignStore = defineStore("campaign", () => {
       const questStore = useQuestStore();
       const locationStore = useLocationStore();
       const compendiumStore = useCompendiumStore();
+      const timelineStore = useTimelineStore();
 
       await Promise.all([
         questStore.fetchQuests(campaignId),
         locationStore.fetchLocations(campaignId),
         compendiumStore.fetchEntries(campaignId),
+        timelineStore.fetchTimelineEvents(campaignId),
       ]);
     } catch (err) {
       console.error("Error setting active campaign:", err);

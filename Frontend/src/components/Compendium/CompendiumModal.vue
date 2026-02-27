@@ -18,12 +18,6 @@ function handleClose() {
   emit("close");
 }
 
-function handleBackdropClick(event) {
-  if (event.target === event.currentTarget) {
-    handleClose();
-  }
-}
-
 // Get category color
 function getCategoryColor(category) {
   const colors = {
@@ -58,7 +52,7 @@ const hasStatBlock = computed(() => props.entry.statBlock);
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="isOpen" class="modal-backdrop" @click="handleBackdropClick">
+      <div v-if="isOpen" class="modal-backdrop">
         <div class="modal-container">
           <!-- Header -->
           <div class="modal-header">
@@ -149,7 +143,7 @@ const hasStatBlock = computed(() => props.entry.statBlock);
             <!-- Location -->
             <div v-if="entry.location" class="section">
               <h4 class="section-title">Location</h4>
-              <p class="section-text">{{ entry.location }}</p>
+              <p class="section-text">{{ entry.location === 'Unknown' ? 'No Location' : entry.location }}</p>
             </div>
 
             <!-- Tags -->
@@ -172,18 +166,28 @@ const hasStatBlock = computed(() => props.entry.statBlock);
               <div class="stat-block">
                 <!-- Header -->
                 <div class="stat-header">
-                  <div class="stat-type">{{ entry.statBlock.type }}</div>
+                  <div class="stat-creature-info">
+                    <span class="stat-size">{{ entry.statBlock.size }}</span>
+                    <span class="stat-type">{{ entry.statBlock.type }}</span>
+                    <span v-if="entry.statBlock.alignment" class="stat-alignment">, {{ entry.statBlock.alignment }}</span>
+                  </div>
                 </div>
 
                 <!-- Core Stats -->
                 <div class="stat-row">
                   <div class="stat-item">
                     <span class="stat-label">AC</span>
-                    <span class="stat-value">{{ entry.statBlock.ac }}</span>
+                    <span class="stat-value">
+                      {{ entry.statBlock.ac }}
+                      <span v-if="entry.statBlock.acDescription" class="stat-detail-inline">({{ entry.statBlock.acDescription }})</span>
+                    </span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">HP</span>
-                    <span class="stat-value">{{ entry.statBlock.hp }}</span>
+                    <span class="stat-value">
+                      {{ entry.statBlock.hp }}
+                      <span v-if="entry.statBlock.hitDice" class="stat-detail-inline">({{ entry.statBlock.hitDice }})</span>
+                    </span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Speed</span>
@@ -357,14 +361,14 @@ const hasStatBlock = computed(() => props.entry.statBlock);
                   </div>
                 </div>
 
-                <!-- Legendary Actions -->
+                <!-- Bonus Actions -->
                 <div
-                  v-if="entry.statBlock.legendaryActions?.length"
+                  v-if="entry.statBlock.bonusActions?.length"
                   class="stat-features"
                 >
-                  <h5 class="features-title">Legendary Actions</h5>
+                  <h5 class="features-title">Bonus Actions</h5>
                   <div
-                    v-for="action in entry.statBlock.legendaryActions"
+                    v-for="action in entry.statBlock.bonusActions"
                     :key="action.name"
                     class="feature"
                   >
@@ -385,6 +389,21 @@ const hasStatBlock = computed(() => props.entry.statBlock);
                   >
                     <strong>{{ reaction.name }}.</strong>
                     {{ reaction.description }}
+                  </div>
+                </div>
+
+                <!-- Legendary Actions -->
+                <div
+                  v-if="entry.statBlock.legendaryActions?.length"
+                  class="stat-features"
+                >
+                  <h5 class="features-title">Legendary Actions</h5>
+                  <div
+                    v-for="action in entry.statBlock.legendaryActions"
+                    :key="action.name"
+                    class="feature"
+                  >
+                    <strong>{{ action.name }}.</strong> {{ action.description }}
                   </div>
                 </div>
 
@@ -579,12 +598,31 @@ const hasStatBlock = computed(() => props.entry.statBlock);
   margin-bottom: 16px;
 }
 
-.stat-type {
+.stat-creature-info {
   color: #fb923c;
   font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: capitalize;
   letter-spacing: 0.05em;
+}
+
+.stat-size {
+  color: #fb923c;
+}
+
+.stat-type {
+  color: #fb923c;
+}
+
+.stat-alignment {
+  color: #94a3b8;
+}
+
+.stat-detail-inline {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: normal;
+  margin-left: 4px;
 }
 
 .stat-row {

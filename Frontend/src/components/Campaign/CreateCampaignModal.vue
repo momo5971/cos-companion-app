@@ -37,7 +37,6 @@ async function handleSubmit() {
 <template>
   <div
     class="modal-overlay"
-    @click.self="$emit('close')"
   >
     <div
       class="modal-content animate-scale-in p-6 max-w-md w-full mx-4"
@@ -55,7 +54,8 @@ async function handleSubmit() {
             required
             class="input"
             placeholder="My Curse of Strahd Campaign"
-          />
+            autocomplete="off"
+          >
         </div>
 
         <div class="mb-4">
@@ -66,8 +66,7 @@ async function handleSubmit() {
             v-model="description"
             rows="3"
             class="textarea"
-            placeholder="Started on 2024-01-15 with friends..."
-          ></textarea>
+            placeholder="Started on 2024-01-15 with friends..." autocomplete="off"></textarea>
         </div>
 
         <div v-if="error" class="mb-4 text-red-500 text-sm animate-slide-down">

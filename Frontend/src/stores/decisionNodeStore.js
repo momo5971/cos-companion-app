@@ -63,23 +63,38 @@ export const useDecisionNodeStore = defineStore("decisionNode", () => {
   }
 
   async function updateNodeStatus(id, completed) {
-  try {
-    const updatedNode = await decisionNodeService.updateDecisionNodeStatus(id, completed);
-    const index = nodes.value.findIndex((n) => n._id === id);
-    if (index !== -1) {
-      nodes.value[index].completed = completed;
+    try {
+      const updatedNode = await decisionNodeService.updateDecisionNodeStatus(
+        id,
+        completed,
+      );
+      const index = nodes.value.findIndex((n) => n._id === id);
+      if (index !== -1) {
+        nodes.value[index].completed = completed;
+      }
+      return updatedNode;
+    } catch (err) {
+      error.value = err.message;
+      throw err;
     }
-    return updatedNode;
-  } catch (err) {
-    error.value = err.message;
-    throw err;
   }
-}
 
   async function deleteNode(id) {
     try {
       await decisionNodeService.deleteDecisionNode(id);
-      nodes.value = nodes.value.filter((n) => n._id !== id);
+
+      // Remove the deleted node AND clean up references in one operation
+      nodes.value = nodes.value
+        .filter((n) => n._id !== id)
+        .map((node) => {
+          if (node.nextNodes && node.nextNodes.includes(id)) {
+            return {
+              ...node,
+              nextNodes: node.nextNodes.filter((nodeId) => nodeId !== id),
+            };
+          }
+          return node;
+        });
     } catch (err) {
       error.value = err.message;
       throw err;

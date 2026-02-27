@@ -99,10 +99,20 @@ export const updateDecisionNodeStatus = async (req, res) => {
 // Delete a decision node
 export const deleteDecisionNode = async (req, res) => {
   try {
-    const deletedNode = await DecisionNode.findByIdAndDelete(req.params.id);
+    const nodeId = req.params.id;
+
+    // Find the node to get its questId
+    const deletedNode = await DecisionNode.findByIdAndDelete(nodeId);
     if (!deletedNode) {
       return res.status(404).json({ message: "Decision node not found" });
     }
+
+    // Remove this node from all other nodes' nextNodes arrays
+    await DecisionNode.updateMany(
+      { nextNodes: nodeId },
+      { $pull: { nextNodes: nodeId } },
+    );
+
     res.status(200).json({ message: "Decision node deleted successfully" });
   } catch (error) {
     console.error("Error deleting decision node", error);

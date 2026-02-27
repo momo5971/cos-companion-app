@@ -5,6 +5,7 @@ import { seedLocations } from "./locationSeeder.js";
 import { seedCompendium } from "./compendiumSeeder.js";
 import { seedDecisionNodes } from "./decisionNodeSeeder.js";
 import { seedCampaigns } from "./campaignSeeder.js";
+import { seedTimeline } from "./timelineSeeder.js";
 
 dotenv.config();
 const runSeeders = async () => {
@@ -19,6 +20,7 @@ const runSeeders = async () => {
     await seedQuests(campaignId);
     await seedCompendium(campaignId);
     await seedDecisionNodes(campaignId);
+    await seedTimeline(campaignId);
     console.log("\n✅ All seeders completed successfully!");
     process.exit(0);
   } catch (error) {

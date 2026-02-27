@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import * as questService from "../services/questService";
+import { useCompendiumStore } from "./compendiumStore";
 
 export const useQuestStore = defineStore("quest", () => {
   //state
@@ -39,6 +40,29 @@ export const useQuestStore = defineStore("quest", () => {
     try {
       const newQuest = await questService.createQuest(questData);
       quests.value.push(newQuest);
+
+      // Automatically create compendium entry
+      const compendiumStore = useCompendiumStore();
+      try {
+        const locationValue = newQuest.location?.name || "No Location";
+
+        await compendiumStore.createEntry({
+          title: newQuest.title,
+          description: newQuest.description || "A quest in the campaign.",
+          tags: ["quest", newQuest.status || "available"],
+          location: locationValue,
+          details: newQuest.description || "",
+          campaignId: newQuest.campaignId,
+          category: "Quest",
+          questId: newQuest._id,
+          questStatus: newQuest.status || "available",
+          questObjectives: newQuest.rewards || [],
+        });
+      } catch (compendiumError) {
+        console.error("Failed to create compendium entry:", compendiumError);
+        // Don't fail the quest creation if compendium fails
+      }
+
       return newQuest;
     } catch (err) {
       error.value = err.message;

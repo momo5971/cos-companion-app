@@ -19,11 +19,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "edit", "delete"]);
+const emit = defineEmits(["close", "edit", "delete", "navigate-to-location"]);
 
 const isEditing = ref(false);
 const editedName = ref("");
 const editedDescription = ref("");
+const editedReadAloud = ref("");
+const editedDmNote = ref("");
 
 // Watch for node changes and update the displayed values
 watch(
@@ -33,6 +35,8 @@ watch(
       // Update displayed values when node changes (but not while editing)
       editedName.value = newNode.name;
       editedDescription.value = newNode.defaultDescription || "";
+      editedReadAloud.value = newNode.readAloud || "";
+      editedDmNote.value = newNode.dmNote || "";
     }
   },
   { deep: true, immediate: true },
@@ -74,12 +78,6 @@ function handleClose() {
   emit("close");
 }
 
-function handleBackdropClick(event) {
-  if (event.target === event.currentTarget) {
-    handleClose();
-  }
-}
-
 function startEdit() {
   isEditing.value = true;
 }
@@ -93,13 +91,20 @@ function saveEdit() {
     node: props.node,
     name: editedName.value,
     description: editedDescription.value,
+    readAloud: editedReadAloud.value,
+    dmNote: editedDmNote.value,
   });
   isEditing.value = false;
 }
 
 function handleDelete() {
-  if (confirm(`Are you sure you want to delete "${props.node.name}"?`)) {
-    emit("delete", props.node);
+  emit("delete", props.node);
+  handleClose();
+}
+
+function handleNavigateToLocation() {
+  if (props.node.linkedLocationId) {
+    emit("navigate-to-location", props.node.linkedLocationId);
     handleClose();
   }
 }
@@ -108,7 +113,7 @@ function handleDelete() {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="isOpen" class="modal-backdrop" @click="handleBackdropClick">
+      <div v-if="isOpen" class="modal-backdrop">
         <div class="modal-container">
           <!-- Header -->
           <div class="modal-header">
@@ -133,7 +138,8 @@ function handleDelete() {
                   type="text"
                   class="form-input"
                   placeholder="Enter node name"
-                />
+                  autocomplete="off"
+                >
               </div>
 
               <div class="form-group">
@@ -143,7 +149,27 @@ function handleDelete() {
                   class="form-textarea"
                   rows="6"
                   placeholder="Enter description"
-                ></textarea>
+                 autocomplete="off"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Read Aloud</label>
+                <textarea
+                  v-model="editedReadAloud"
+                  class="form-textarea read-aloud-input"
+                  rows="4"
+                  placeholder="Text to read aloud to players..."
+                 autocomplete="off"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">DM Note</label>
+                <textarea
+                  v-model="editedDmNote"
+                  class="form-textarea dm-note-input"
+                  rows="4"
+                  placeholder="Private notes for the DM..."
+                 autocomplete="off"></textarea>
               </div>
 
               <div class="form-actions">
@@ -168,6 +194,22 @@ function handleDelete() {
                 <p class="description-text">{{ displayDescription }}</p>
               </div>
 
+              <!-- Read Aloud -->
+              <div v-if="node.readAloud" class="description-section">
+                <h4 class="section-title">Read Aloud</h4>
+                <div class="read-aloud-box">
+                  <p class="description-text">{{ node.readAloud }}</p>
+                </div>
+              </div>
+
+              <!-- DM Note -->
+              <div v-if="node.dmNote" class="description-section">
+                <h4 class="section-title">DM Note</h4>
+                <div class="dm-note-box">
+                  <p class="description-text">{{ node.dmNote }}</p>
+                </div>
+              </div>
+
               <!-- Show default description if quest description is active -->
               <div
                 v-if="questDescription && node.defaultDescription"
@@ -185,6 +227,17 @@ function handleDelete() {
           <div class="modal-footer">
             <button v-if="!isEditing" class="btn-danger" @click="handleDelete">
               Delete
+            </button>
+            <button 
+              v-if="!isEditing && node.linkedLocationId" 
+              class="btn-navigate" 
+              @click="handleNavigateToLocation"
+              title="Navigate to linked location"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+              </svg>
+              Go to Location
             </button>
             <div class="spacer"></div>
             <button v-if="!isEditing" class="btn-secondary" @click="startEdit">
@@ -284,6 +337,32 @@ function handleDelete() {
   @apply text-gray-300 leading-relaxed text-base whitespace-pre-wrap;
 }
 
+.read-aloud-box {
+  background: rgba(212, 175, 55, 0.1);
+  border-left: 3px solid #d4af37;
+  padding: 16px;
+  border-radius: 4px;
+  font-style: italic;
+  text-align: center;
+}
+
+.dm-note-box {
+  background: rgba(139, 0, 0, 0.1);
+  border-left: 3px solid #8b0000;
+  padding: 16px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.read-aloud-input {
+  font-style: italic;
+  text-align: center;
+}
+
+.dm-note-input {
+  font-weight: bold;
+}
+
 .modal-footer {
   @apply px-6 py-4 border-t border-strahd-red/30 flex gap-3;
 }
@@ -305,6 +384,12 @@ function handleDelete() {
 .btn-danger {
   @apply px-6 py-2.5 bg-red-700 text-white rounded-lg font-semibold;
   @apply hover:bg-red-800 transition-all duration-200;
+}
+
+.btn-navigate {
+  @apply px-6 py-2.5 bg-strahd-gold text-strahd-dark rounded-lg font-semibold;
+  @apply hover:bg-yellow-500 transition-all duration-200;
+  @apply flex items-center gap-2;
 }
 
 /* Transition animations */

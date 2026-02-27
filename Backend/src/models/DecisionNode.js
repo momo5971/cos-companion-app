@@ -13,7 +13,7 @@ const decisionNodeSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
+      required: false,
     },
     nodeType: {
       type: String,
@@ -36,6 +36,12 @@ const decisionNodeSchema = new mongoose.Schema(
         ref: "DecisionNode",
       },
     ],
+    previousNodes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DecisionNode",
+      },
+    ],
     consequences: {
       type: String,
     },
@@ -47,6 +53,20 @@ const decisionNodeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Campaign",
       required: true,
+    },
+    readAloud: {
+      type: String,
+    },
+    dmNote: {
+      type: String,
+    },
+    stringId: {
+      type: String,
+      index: true,
+    },
+    section: {
+      type: String,
+      default: "Unsorted",
     },
   },
   {

@@ -48,11 +48,37 @@ export const getEntryById = async (req, res) => {
 
 export const createEntry = async (req, res) => {
   try {
-    const newEntry = new Compendium(req.body);
+    let statBlockId = null;
+
+    // If statBlock data is provided (as an object), create it first
+    if (
+      req.body.statBlock &&
+      typeof req.body.statBlock === "object" &&
+      !req.body.statBlock._id
+    ) {
+      const statBlock = new StatBlock(req.body.statBlock);
+      const savedStatBlock = await statBlock.save();
+      statBlockId = savedStatBlock._id;
+    } else if (req.body.statBlock) {
+      // If it's already an ID, use it
+      statBlockId = req.body.statBlock;
+    }
+
+    // Create the compendium entry with the statBlock ID
+    const entryData = { ...req.body };
+    if (statBlockId) {
+      entryData.statBlock = statBlockId;
+    } else {
+      delete entryData.statBlock;
+    }
+
+    const newEntry = new Compendium(entryData);
     const savedEntry = await newEntry.save();
+
     if (savedEntry.statBlock) {
       await savedEntry.populate("statBlock");
     }
+
     res.status(201).json(savedEntry);
   } catch (error) {
     console.error("Error creating compendium entry", error);
@@ -88,10 +114,34 @@ export const updateEntry = async (req, res) => {
 
 export const deleteEntry = async (req, res) => {
   try {
-    const deletedEntry = await Compendium.findByIdAndDelete(req.params.id);
+    const entryId = req.params.id;
+    const deletedEntry = await Compendium.findById(entryId);
+
     if (!deletedEntry) {
       return res.status(404).json({ message: "Entry not found" });
     }
+
+    // If deleting a Quest, also delete the corresponding Quest
+    if (deletedEntry.category === "Quest") {
+      const Quest = (await import("../models/Quest.js")).default;
+      await Quest.deleteOne({
+        title: deletedEntry.title,
+        campaignId: deletedEntry.campaignId,
+      });
+    }
+
+    // If deleting a Location entry, also delete the corresponding Location
+    if (deletedEntry.category === "Location") {
+      const Location = (await import("../models/Location.js")).default;
+      await Location.deleteOne({
+        name: deletedEntry.title,
+        campaignId: deletedEntry.campaignId,
+      });
+    }
+
+    // Delete the compendium entry
+    await Compendium.findByIdAndDelete(entryId);
+
     res.status(200).json({ message: "Entry deleted successfully" });
   } catch (error) {
     console.error("Error deleting compendium entry", error);

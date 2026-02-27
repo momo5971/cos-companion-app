@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import * as locationService from "../services/locationService";
+import { useCompendiumStore } from "./compendiumStore";
 
 export const useLocationStore = defineStore("location", () => {
   //state
@@ -8,6 +9,12 @@ export const useLocationStore = defineStore("location", () => {
   const currentLocation = ref(null);
   const loading = ref(false);
   const error = ref(null);
+
+  // Viewport state per map (persists in memory)
+  const mapViewports = ref({});
+
+  // Last selected map per location (persists in memory)
+  const lastSelectedMaps = ref({});
 
   //actions
   async function fetchLocations(campaignId) {
@@ -29,10 +36,51 @@ export const useLocationStore = defineStore("location", () => {
     }
   }
 
+  function saveMapViewport(locationId, mapId, viewport) {
+    const key = `${locationId}_${mapId}`;
+    mapViewports.value[key] = viewport;
+  }
+
+  function getMapViewport(locationId, mapId) {
+    const key = `${locationId}_${mapId}`;
+    return mapViewports.value[key] || null;
+  }
+
+  function setLastSelectedMap(locationId, mapId) {
+    lastSelectedMaps.value[locationId] = mapId;
+  }
+
+  function getLastSelectedMap(locationId) {
+    return lastSelectedMaps.value[locationId] || null;
+  }
+
   async function createLocation(locationData) {
     try {
       const newLocation = await locationService.createLocation(locationData);
       locations.value.push(newLocation);
+
+      // Automatically create compendium entry
+      const compendiumStore = useCompendiumStore();
+      try {
+        await compendiumStore.createEntry({
+          title: newLocation.name,
+          description:
+            newLocation.description || `A ${newLocation.type} in the campaign.`,
+          tags: ["location", newLocation.type],
+          location: newLocation.parentLocationId
+            ? "Sub-location"
+            : "Main location",
+          details: newLocation.description || "",
+          campaignId: newLocation.campaignId,
+          category: "Location",
+          locationType: newLocation.type,
+          parentLocation: newLocation.parentLocationId || null,
+        });
+      } catch (compendiumError) {
+        console.error("Failed to create compendium entry:", compendiumError);
+        // Don't fail the location creation if compendium fails
+      }
+
       return newLocation;
     } catch (err) {
       error.value = err.message;
@@ -46,6 +94,7 @@ export const useLocationStore = defineStore("location", () => {
         id,
         locationData,
       );
+
       const index = locations.value.findIndex((l) => l._id === id);
       if (index !== -1) {
         locations.value[index] = updatedLocation;
@@ -60,67 +109,7 @@ export const useLocationStore = defineStore("location", () => {
     }
   }
 
-  async function updateLocationNodePosition(locationId, nodeName, position) {
-    try {
-      // Find the location
-      const location = this.locations.find((loc) => loc._id === locationId);
-      if (!location) return;
-
-      // Find and update the node
-      const node = location.nodes.find((n) => n.name === nodeName);
-      if (node) {
-        node.position = position;
-      }
-
-      await locationService.updateLocation(locationId, location);
-    } catch (error) {
-      console.error("Error updating node position:", error);
-    }
-  }
-
-  async function deleteLocation(id) {
-    try {
-      await locationService.deleteLocation(id);
-      locations.value = locations.value.filter((l) => l._id !== id);
-      if (currentLocation.value?._id === id) {
-        currentLocation.value = null;
-      }
-    } catch (err) {
-      error.value = err.message;
-      throw err;
-    }
-  }
-
-  async function toggleNodeCompleted(locationId, nodeName) {
-    try {
-      const location = this.locations.find((loc) => loc._id === locationId);
-      if (!location) return;
-
-      const node = location.nodes.find((n) => n.name === nodeName);
-      if (node) {
-        node.completed = !node.completed;
-        await locationService.updateLocation(locationId, location);
-      }
-    } catch (error) {
-      console.error("Error toggling node completed:", error);
-    }
-  }
-
-  async function createNode(locationId, nodeData) {
-    try {
-      const location = this.locations.find((loc) => loc._id === locationId);
-      if (!location) return;
-
-      // Add the new node
-      location.nodes.push(nodeData);
-
-      await locationService.updateLocation(locationId, location);
-    } catch (error) {
-      console.error("Error creating node:", error);
-    }
-  }
-
-  async function updateNode(locationId, nodeName, updates) {
+  async function updateLocationNodePosition(locationId, nodeId, position) {
     try {
       const locationIndex = locations.value.findIndex(
         (loc) => loc._id === locationId,
@@ -128,7 +117,114 @@ export const useLocationStore = defineStore("location", () => {
       if (locationIndex === -1) return;
 
       const location = locations.value[locationIndex];
-      const nodeIndex = location.nodes.findIndex((n) => n.name === nodeName);
+      const nodeIndex = location.nodes.findIndex((n) => n.id === nodeId);
+
+      if (nodeIndex !== -1) {
+        // Create new nodes array with updated position
+        const updatedNodes = [...location.nodes];
+        updatedNodes[nodeIndex] = {
+          ...updatedNodes[nodeIndex],
+          position: { ...position },
+        };
+
+        // Update location with new nodes array
+        locations.value[locationIndex] = {
+          ...location,
+          nodes: updatedNodes,
+        };
+
+        // Save to backend
+        await locationService.updateLocation(
+          locationId,
+          locations.value[locationIndex],
+        );
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  }
+
+  async function deleteLocation(id) {
+    console.log("[FRONTEND] deleteLocation called with id:", id);
+    try {
+      console.log("[FRONTEND] Calling backend API to delete location");
+      await locationService.deleteLocation(id);
+      console.log("[FRONTEND] Backend API call successful");
+      locations.value = locations.value.filter((l) => l._id !== id);
+      if (currentLocation.value?._id === id) {
+        currentLocation.value = null;
+      }
+      console.log("[FRONTEND] Location removed from store");
+    } catch (err) {
+      console.error("[FRONTEND] Error deleting location:", err);
+      error.value = err.message;
+      throw err;
+    }
+  }
+
+  async function toggleNodeCompleted(locationId, nodeId) {
+    try {
+      const location = this.locations.find((loc) => loc._id === locationId);
+      if (!location) return;
+
+      const node = location.nodes.find((n) => n.id === nodeId);
+      if (node) {
+        node.completed = !node.completed;
+        await locationService.updateLocation(locationId, location);
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  }
+
+  async function createNode(locationId, nodeData) {
+    try {
+      const locationIndex = locations.value.findIndex(
+        (loc) => loc._id === locationId,
+      );
+      if (locationIndex === -1) return;
+
+      const location = locations.value[locationIndex];
+
+      // Generate unique ID for the node
+      const nodeWithId = {
+        ...nodeData,
+        id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      };
+
+      // Create a new nodes array to trigger reactivity
+      const updatedNodes = [...(location.nodes || []), nodeWithId];
+
+      // Update the location with new nodes array
+      const updatedLocationData = {
+        ...location,
+        nodes: updatedNodes,
+      };
+
+      // Send to backend and get the response
+      const updatedLocation = await locationService.updateLocation(
+        locationId,
+        updatedLocationData,
+      );
+
+      // Update with the response from backend
+      locations.value[locationIndex] = updatedLocation;
+
+      return updatedLocation;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async function updateNode(locationId, nodeId, updates) {
+    try {
+      const locationIndex = locations.value.findIndex(
+        (loc) => loc._id === locationId,
+      );
+      if (locationIndex === -1) return;
+
+      const location = locations.value[locationIndex];
+      const nodeIndex = location.nodes.findIndex((n) => n.id === nodeId);
 
       if (nodeIndex !== -1) {
         // Create a new nodes array to trigger reactivity
@@ -150,43 +246,21 @@ export const useLocationStore = defineStore("location", () => {
         );
       }
     } catch (error) {
-      console.error("Error updating node:", error);
+      // Silent fail
     }
   }
 
-  async function deleteNode(locationId, nodeName) {
+  async function deleteNode(locationId, nodeId) {
     try {
       const location = this.locations.find((loc) => loc._id === locationId);
       if (!location) return;
 
       // Remove the node
-      location.nodes = location.nodes.filter((n) => n.name !== nodeName);
+      location.nodes = location.nodes.filter((n) => n.id !== nodeId);
 
       await locationService.updateLocation(locationId, location);
     } catch (error) {
-      console.error("Error deleting node:", error);
-    }
-  }
-
-  async function clearAllNodes(locationId) {
-    try {
-      const locationIndex = locations.value.findIndex(
-        (loc) => loc._id === locationId,
-      );
-      if (locationIndex === -1) return;
-
-      // Create a new location object with empty nodes array to trigger reactivity
-      locations.value[locationIndex] = {
-        ...locations.value[locationIndex],
-        nodes: [],
-      };
-
-      await locationService.updateLocation(
-        locationId,
-        locations.value[locationIndex],
-      );
-    } catch (error) {
-      console.error("Error clearing nodes:", error);
+      // Silent fail
     }
   }
 
@@ -195,6 +269,8 @@ export const useLocationStore = defineStore("location", () => {
     currentLocation,
     loading,
     error,
+    mapViewports,
+    lastSelectedMaps,
     fetchLocations,
     createLocation,
     updateLocation,
@@ -204,6 +280,9 @@ export const useLocationStore = defineStore("location", () => {
     updateNode,
     deleteNode,
     deleteLocation,
-    clearAllNodes,
+    saveMapViewport,
+    getMapViewport,
+    setLastSelectedMap,
+    getLastSelectedMap,
   };
 });

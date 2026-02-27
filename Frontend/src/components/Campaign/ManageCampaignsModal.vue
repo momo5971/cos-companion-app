@@ -31,7 +31,6 @@ function exportCampaign(campaign) {
 const handleImport = async (event) => {
   const file = event.target.files[0];
   if (!file) {
-    alert("Please select a file to import");
     return;
   }
 
@@ -49,8 +48,6 @@ const handleImport = async (event) => {
     await locationStore.fetchLocations(importedCampaign._id);
     await compendiumStore.fetchEntries(importedCampaign._id);
 
-    alert("Campaign imported successfully!");
-
     // Clear the file input
     if (fileInput.value) {
       fileInput.value.value = "";
@@ -60,16 +57,10 @@ const handleImport = async (event) => {
     await campaignStore.fetchCampaigns();
   } catch (error) {
     console.error("Import error:", error);
-    alert("Failed to import campaign. Please check the file format.");
   }
 };
 
-async function confirmDelete(campaign) {
-  if (
-    confirm(
-      `Are you sure you want to delete "${campaign.name}"? This cannot be undone.`,
-    )
-  ) {
+async function confirmDelete(campaign) { {
     try {
       await campaignStore.deleteCampaign(campaign._id);
     } catch (err) {
@@ -80,7 +71,7 @@ async function confirmDelete(campaign) {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay">
     <div
       class="modal-content animate-scale-in p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
     >
