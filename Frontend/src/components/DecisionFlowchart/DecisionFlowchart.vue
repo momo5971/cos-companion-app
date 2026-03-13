@@ -18,6 +18,7 @@ const showCreateSectionModal = ref(false);
 const selectedParentNodeId = ref(null);
 const editingSection = ref(null);
 const editingNode = ref(null);
+const pendingNodePosition = ref(null);
 
 const props = defineProps({
   questId: {
@@ -31,6 +32,7 @@ defineExpose({
   openCreateModal: (parentNodeId = null) => {
     editingNode.value = null;
     selectedParentNodeId.value = parentNodeId;
+    pendingNodePosition.value = null;
     showCreateModal.value = true;
   }
 });
@@ -49,6 +51,14 @@ function handleZoomToNode(nodeId) {
 function openCreateModal(parentNodeId = null) {
   editingNode.value = null;
   selectedParentNodeId.value = parentNodeId;
+  pendingNodePosition.value = null;
+  showCreateModal.value = true;
+}
+
+function handleCreateAtPosition(position) {
+  editingNode.value = null;
+  selectedParentNodeId.value = null;
+  pendingNodePosition.value = position;
   showCreateModal.value = true;
 }
 
@@ -72,6 +82,7 @@ function handleNodeCreated() {
   decisionNodeStore.fetchNodesByQuest(props.questId);
   showCreateModal.value = false;
   editingNode.value = null;
+  pendingNodePosition.value = null;
 }
 
 function handleSectionCreated() {
@@ -119,7 +130,11 @@ onMounted(async () => {
 
       <!-- Right Panel: Focused Flowchart (70%) -->
       <div ref="flowchartPanel" class="flowchart-panel">
-        <FocusedFlowchart ref="focusedFlowchartRef" :focused-node-id="focusedNodeId" />
+        <FocusedFlowchart 
+          ref="focusedFlowchartRef" 
+          :focused-node-id="focusedNodeId"
+          @create-at-position="handleCreateAtPosition"
+        />
       </div>
     </div>
 
@@ -147,7 +162,8 @@ onMounted(async () => {
       :quest-id="props.questId"
       :parent-node-id="selectedParentNodeId"
       :node="editingNode"
-      @close="showCreateModal = false; editingNode = null"
+      :position="pendingNodePosition"
+      @close="showCreateModal = false; editingNode = null; pendingNodePosition = null"
       @created="handleNodeCreated"
       @updated="handleNodeCreated"
     />

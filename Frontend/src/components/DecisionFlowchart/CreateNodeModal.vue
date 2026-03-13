@@ -24,6 +24,10 @@ const props = defineProps({
   node: {
     type: Object,
     default: null
+  },
+  position: {
+    type: Object,
+    default: null
   }
 });
 
@@ -139,7 +143,7 @@ async function handleSubmit() {
         questId: props.questId,
         campaignId: campaignStore.activeCampaign._id,
         nextNodes: [],
-        position: { x: 0, y: 0 }
+        position: props.position || { x: 0, y: 0 }
       };
 
       const newNode = await decisionNodeStore.createNode(nodeData);

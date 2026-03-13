@@ -13,6 +13,7 @@ const props = defineProps({
 });
 
 const decisionNodeStore = useDecisionNodeStore();
+const emit = defineEmits(['create-at-position']);
 const canvasContainer = ref(null);
 const svgCanvas = ref(null);
 const selectedNodeId = ref(null);
@@ -195,6 +196,15 @@ function handleMouseDown(event) {
       selectedNodeIds.value = new Set();
     }
   }
+}
+
+// Handle double-click on canvas to create node at cursor position
+function handleCanvasDoubleClick(event) {
+  if (event.target.closest('[data-node-id]')) return;
+  if (event.target.closest('.connection-handle')) return;
+
+  const pos = screenToCanvas(event.clientX, event.clientY);
+  emit('create-at-position', { x: Math.round(pos.x), y: Math.round(pos.y) });
 }
 
 // Setup D3 zoom for pan and zoom
@@ -655,7 +665,7 @@ function zoomToNode(nodeId) {
         <p class="section-info">
           {{ sectionNodes.length }} nodes
           <span v-if="selectedNodeIds.size > 0"> • {{ selectedNodeIds.size }} selected</span>
-          • Ctrl+Click to multi-select • Scroll to zoom • Drag to pan
+          • Ctrl+Click to multi-select • Scroll to zoom • Drag to pan • Double-click to create node
         </p>
       </div>
 
@@ -663,6 +673,7 @@ function zoomToNode(nodeId) {
         ref="canvasContainer"
         class="canvas-container" 
         @mousedown="handleMouseDown"
+        @dblclick="handleCanvasDoubleClick"
       >
         <div class="canvas-layer" :style="canvasStyle">
           <svg class="connections-svg" width="10000" height="10000">
