@@ -8,7 +8,10 @@ export const getAllLocations = async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const locations = await Location.find({ campaignId });
+    // Exclude map image data from list view to keep responses small
+    const locations = await Location.find({ campaignId }).select(
+      "-maps.image -mapImage",
+    );
     res.status(200).json(locations);
   } catch (error) {
     console.error("Error fetching locations", error);

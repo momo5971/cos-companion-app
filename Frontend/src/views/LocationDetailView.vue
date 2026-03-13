@@ -20,8 +20,11 @@ const newMapName = ref("");
 const newMapImageInput = ref(null);
 
 // Watch for location ID changes and reset selectedMapId
-watch(() => locationId.value, () => {
+watch(() => locationId.value, async (newId) => {
   selectedMapId.value = null;
+  if (newId) {
+    await locationStore.fetchLocationById(newId);
+  }
 });
 
 const currentLocation = computed(() => {
@@ -29,11 +32,16 @@ const currentLocation = computed(() => {
 });
 
 onMounted(async () => {
-  // Only fetch if locations are empty
-  if (locationStore.locations.length === 0) {
+  // Fetch the full location with map images
+  await locationStore.fetchLocationById(locationId.value);
+  
+  // Also fetch the list if empty (for navigation purposes)
+  if (locationStore.locations.length <= 1) {
     const campaignStore = useCampaignStore();
     if (campaignStore.activeCampaign?._id) {
       await locationStore.fetchLocations(campaignStore.activeCampaign._id);
+      // Re-fetch full location since fetchLocations overwrites without images
+      await locationStore.fetchLocationById(locationId.value);
     }
   }
   

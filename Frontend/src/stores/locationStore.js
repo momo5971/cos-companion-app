@@ -54,6 +54,23 @@ export const useLocationStore = defineStore("location", () => {
     return lastSelectedMaps.value[locationId] || null;
   }
 
+  async function fetchLocationById(id) {
+    try {
+      const fullLocation = await locationService.getLocationById(id);
+      // Update in the locations array if present
+      const index = locations.value.findIndex((l) => l._id === id);
+      if (index !== -1) {
+        locations.value[index] = fullLocation;
+      } else {
+        locations.value.push(fullLocation);
+      }
+      return fullLocation;
+    } catch (err) {
+      error.value = err.message;
+      throw err;
+    }
+  }
+
   async function createLocation(locationData) {
     try {
       const newLocation = await locationService.createLocation(locationData);
@@ -133,11 +150,10 @@ export const useLocationStore = defineStore("location", () => {
           nodes: updatedNodes,
         };
 
-        // Save to backend
-        await locationService.updateLocation(
-          locationId,
-          locations.value[locationIndex],
-        );
+        // Only send nodes, not the full location with maps
+        await locationService.updateLocation(locationId, {
+          nodes: updatedNodes,
+        });
       }
     } catch (error) {
       // Silent fail
@@ -164,13 +180,16 @@ export const useLocationStore = defineStore("location", () => {
 
   async function toggleNodeCompleted(locationId, nodeId) {
     try {
-      const location = this.locations.find((loc) => loc._id === locationId);
+      const location = locations.value.find((loc) => loc._id === locationId);
       if (!location) return;
 
       const node = location.nodes.find((n) => n.id === nodeId);
       if (node) {
         node.completed = !node.completed;
-        await locationService.updateLocation(locationId, location);
+        // Only send nodes, not the full location with maps
+        await locationService.updateLocation(locationId, {
+          nodes: location.nodes,
+        });
       }
     } catch (error) {
       // Silent fail
@@ -195,17 +214,10 @@ export const useLocationStore = defineStore("location", () => {
       // Create a new nodes array to trigger reactivity
       const updatedNodes = [...(location.nodes || []), nodeWithId];
 
-      // Update the location with new nodes array
-      const updatedLocationData = {
-        ...location,
+      // Only send nodes, not the full location with maps
+      const updatedLocation = await locationService.updateLocation(locationId, {
         nodes: updatedNodes,
-      };
-
-      // Send to backend and get the response
-      const updatedLocation = await locationService.updateLocation(
-        locationId,
-        updatedLocationData,
-      );
+      });
 
       // Update with the response from backend
       locations.value[locationIndex] = updatedLocation;
@@ -240,10 +252,10 @@ export const useLocationStore = defineStore("location", () => {
           nodes: updatedNodes,
         };
 
-        await locationService.updateLocation(
-          locationId,
-          locations.value[locationIndex],
-        );
+        // Only send nodes, not the full location with maps
+        await locationService.updateLocation(locationId, {
+          nodes: updatedNodes,
+        });
       }
     } catch (error) {
       // Silent fail
@@ -252,13 +264,14 @@ export const useLocationStore = defineStore("location", () => {
 
   async function deleteNode(locationId, nodeId) {
     try {
-      const location = this.locations.find((loc) => loc._id === locationId);
+      const location = locations.value.find((loc) => loc._id === locationId);
       if (!location) return;
 
-      // Remove the node
-      location.nodes = location.nodes.filter((n) => n.id !== nodeId);
+      const updatedNodes = location.nodes.filter((n) => n.id !== nodeId);
+      location.nodes = updatedNodes;
 
-      await locationService.updateLocation(locationId, location);
+      // Only send nodes, not the full location with maps
+      await locationService.updateLocation(locationId, { nodes: updatedNodes });
     } catch (error) {
       // Silent fail
     }
@@ -272,6 +285,7 @@ export const useLocationStore = defineStore("location", () => {
     mapViewports,
     lastSelectedMaps,
     fetchLocations,
+    fetchLocationById,
     createLocation,
     updateLocation,
     updateLocationNodePosition,
