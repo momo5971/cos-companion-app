@@ -98,6 +98,7 @@ async function handleCreateLocation(locationData) {
         <button
           @click="openCreateModal"
           class="create-location-btn"
+          :disabled="!campaignStore.hasActiveCampaign"
           title="Create new location"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,5 +395,16 @@ async function handleCreateLocation(locationData) {
   background: #a00000;
   box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
   transform: translateY(-2px);
+}
+
+.create-location-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-location-btn:disabled:hover {
+  background: #8b0000;
+  box-shadow: 0 0 15px rgba(139, 0, 0, 0.3);
+  transform: none;
 }
 </style>

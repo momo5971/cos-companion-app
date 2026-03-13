@@ -54,7 +54,7 @@ watch(() => props.show, (newVal) => {
 });
 
 async function handleSubmit() {
-  if (!formData.value.name.trim()) {
+  if (!formData.value.name.trim() || (!isEditMode.value && !campaignStore.activeCampaign?._id)) {
     return;
   }
 
