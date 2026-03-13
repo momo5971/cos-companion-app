@@ -71,7 +71,7 @@ const nodesWithPositions = computed(() => {
   const nodesPerRow = 3;
 
   return sectionNodes.value.map((node, index) => {
-    // Check if we have a custom position for this node
+    // 1. Check local drag overrides first
     if (nodePositions.value[node._id]) {
       return {
         ...node,
@@ -79,7 +79,15 @@ const nodesWithPositions = computed(() => {
       };
     }
 
-    // Otherwise use grid position
+    // 2. Use saved position from DB if it exists and isn't default (0,0)
+    if (node.position && (node.position.x !== 0 || node.position.y !== 0)) {
+      return {
+        ...node,
+        position: { x: node.position.x, y: node.position.y },
+      };
+    }
+
+    // 3. Fall back to grid layout
     const row = Math.floor(index / nodesPerRow);
     const col = index % nodesPerRow;
 
@@ -263,14 +271,34 @@ function handleNodeDrag(event) {
   drawConnections();
 }
 
+// Persist node positions to backend (debounced)
+let saveTimeout = null;
+function saveNodePositions(nodeIds) {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    nodeIds.forEach(id => {
+      const pos = nodePositions.value[id];
+      if (pos) {
+        decisionNodeStore.updateNode(id, { position: { x: Math.round(pos.x), y: Math.round(pos.y) } }).catch(() => {});
+      }
+    });
+  }, 300);
+}
+
 function endNodeDrag(event) {
   if (!isDragging.value) return;
   
+  const draggedId = draggedNodeId.value;
   isDragging.value = false;
   draggedNodeId.value = null;
   
   document.removeEventListener('mousemove', handleNodeDrag);
   document.removeEventListener('mouseup', endNodeDrag);
+
+  // Save position to backend
+  if (draggedId) {
+    saveNodePositions([draggedId]);
+  }
 }
 
 // Multi-node dragging
@@ -334,12 +362,18 @@ function handleMultiNodeDrag(event) {
 function endMultiNodeDrag(event) {
   if (!isDragging.value) return;
   
+  const movedIds = [...selectedNodeIds.value];
   isDragging.value = false;
   draggedNodeId.value = null;
   dragStartPositions.value = {};
   
   document.removeEventListener('mousemove', handleMultiNodeDrag);
   document.removeEventListener('mouseup', endMultiNodeDrag);
+
+  // Save all moved positions to backend
+  if (movedIds.length > 0) {
+    saveNodePositions(movedIds);
+  }
 }
 
 // Start drawing a connection
@@ -552,7 +586,7 @@ watch(
 
 // Reset when section changes
 watch(focusedSection, () => {
-  nodePositions.value = {};
+  nodePositions.value = {}; // Clear local drag overrides (DB positions load via computed)
   selectedNodeIds.value = new Set();
   viewportTransform.value = { x: 0, y: 0, scale: 1 };
   // Reset D3 zoom transform
