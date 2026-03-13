@@ -207,6 +207,33 @@ function handleCanvasDoubleClick(event) {
   emit('create-at-position', { x: Math.round(pos.x), y: Math.round(pos.y) });
 }
 
+// Touch double-tap on canvas to create node
+let lastCanvasTapTime = 0;
+let lastCanvasTapPos = { x: 0, y: 0 };
+
+function handleCanvasTouchEnd(event) {
+  if (event.target.closest('[data-node-id]')) return;
+  if (event.target.closest('.connection-handle')) return;
+
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+
+  const now = Date.now();
+  const dx = touch.clientX - lastCanvasTapPos.x;
+  const dy = touch.clientY - lastCanvasTapPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (now - lastCanvasTapTime < 400 && dist < 30) {
+    event.preventDefault();
+    const pos = screenToCanvas(touch.clientX, touch.clientY);
+    emit('create-at-position', { x: Math.round(pos.x), y: Math.round(pos.y) });
+    lastCanvasTapTime = 0;
+  } else {
+    lastCanvasTapTime = now;
+    lastCanvasTapPos = { x: touch.clientX, y: touch.clientY };
+  }
+}
+
 // Setup D3 zoom for pan and zoom
 function setupZoom() {
   if (!canvasContainer.value) return;
@@ -674,6 +701,7 @@ function zoomToNode(nodeId) {
         class="canvas-container" 
         @mousedown="handleMouseDown"
         @dblclick="handleCanvasDoubleClick"
+        @touchend="handleCanvasTouchEnd"
       >
         <div class="canvas-layer" :style="canvasStyle">
           <svg class="connections-svg" width="10000" height="10000">

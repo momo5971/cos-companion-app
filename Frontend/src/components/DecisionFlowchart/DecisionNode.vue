@@ -104,6 +104,9 @@ function startConnection(event) {
 
 const isDraggingNode = ref(false);
 
+// Touch double-tap detection
+let lastTapTime = 0;
+
 function viewDetails(event) {
   // Emit node-click for selection handling
   emit("nodeClick", props.node, event);
@@ -134,6 +137,27 @@ function handleDoubleClick(event) {
   emit("viewDetails", props.node);
 }
 
+function handleTouchEnd(event) {
+  // Skip if dragging
+  if (isDraggingNode.value) {
+    isDraggingNode.value = false;
+    return;
+  }
+
+  // Skip connection handle
+  if (event.target.closest('.connection-handle')) return;
+
+  const now = Date.now();
+  if (now - lastTapTime < 400) {
+    // Double tap detected
+    event.preventDefault();
+    emit("viewDetails", props.node);
+    lastTapTime = 0;
+  } else {
+    lastTapTime = now;
+  }
+}
+
 // Track if node was dragged to prevent opening modal
 watch(() => props.isDragging, (newVal) => {
   if (newVal) {
@@ -159,6 +183,7 @@ watch(() => props.isDragging, (newVal) => {
     :data-node-id="node._id"
     @click="viewDetails"
     @dblclick="handleDoubleClick"
+    @touchend="handleTouchEnd"
     @contextmenu="toggleCompleted"
     title="Click to select • Ctrl+Click to multi-select • Drag to move • Double-click for details • Right-click to toggle completed"
   >
