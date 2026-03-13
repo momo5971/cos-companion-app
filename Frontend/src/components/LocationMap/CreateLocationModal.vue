@@ -73,7 +73,7 @@ async function handleSubmit() {
         name: formData.value.name,
         description: formData.value.description,
         type: formData.value.type,
-        campaignId: campaignStore.activeCampaign._id,
+        campaignId: campaignStore.activeCampaign?._id,
         parentLocationId: props.parentLocationId,
       });
     }

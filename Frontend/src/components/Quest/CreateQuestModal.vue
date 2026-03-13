@@ -109,7 +109,7 @@ function handleLocationChange(event) {
 }
 
 async function createNewLocation() {
-  if (!isNewLocationValid.value || !campaignStore.activeCampaign) return;
+  if (!isNewLocationValid.value || !campaignStore.activeCampaign?._id) return;
 
   try {
     const locationData = {
@@ -133,7 +133,7 @@ async function createNewLocation() {
 }
 
 async function handleSubmit() {
-  if (!isValid.value || !campaignStore.activeCampaign) return;
+  if (!isValid.value || !campaignStore.activeCampaign?._id) return;
 
   try {
     const questData = {
