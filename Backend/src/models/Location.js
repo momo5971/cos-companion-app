@@ -113,4 +113,4 @@ const locationSchema = new mongoose.Schema(
   },
 );
 
-export default mongoose.model("Location", locationSchema);
+export default mongoose.model("LocationMap", locationSchema, "locations");

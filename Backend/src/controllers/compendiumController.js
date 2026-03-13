@@ -1,6 +1,13 @@
 import Compendium from "../models/Compendium.js";
 import StatBlock from "../models/StatBlock.js";
 
+// Register discriminator models so Mongoose knows about all categories
+import "../models/Npc.js";
+import "../models/Monster.js";
+import "../models/Item.js";
+import "../models/QuestEntry.js";
+import "../models/LocationEntry.js";
+
 export const getAllEntries = async (req, res) => {
   try {
     const { campaignId } = req.query;
