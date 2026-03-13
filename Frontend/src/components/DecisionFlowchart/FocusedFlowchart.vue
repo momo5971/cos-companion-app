@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
+import * as d3 from "d3";
 import DecisionNode from "./DecisionNode.vue";
 import DecisionModal from "./DecisionModal.vue";
 import { useDecisionNodeStore } from "../../stores/decisionNodeStore";
@@ -25,10 +26,11 @@ const selectedNodeIds = ref(new Set());
 const isDrawingConnection = ref(false);
 const connectionStart = ref(null);
 
-// Viewport state (like Figma)
+// Viewport state (D3 zoom-based)
 const viewportTransform = ref({ x: 0, y: 0, scale: 1 });
-const isPanning = ref(false);
-const panStart = ref({ x: 0, y: 0 });
+
+// D3 zoom instance
+let zoomBehavior = null;
 
 // Drag state
 const isDragging = ref(false);
@@ -161,66 +163,70 @@ function screenToCanvas(screenX, screenY) {
   return { x, y };
 }
 
-// Start panning (Space + drag or middle mouse button)
+// Handle mouse down on canvas — only for node dragging and deselection
 function handleMouseDown(event) {
-  // Check if clicking on a node
   const nodeElement = event.target.closest('[data-node-id]');
   
   if (nodeElement) {
-    // Start dragging node
     const nodeId = nodeElement.getAttribute('data-node-id');
     const node = nodesWithPositions.value.find(n => n._id === nodeId);
     
     if (node && !event.target.closest('.connection-handle')) {
-      // If clicking on a selected node, drag all selected nodes
       if (selectedNodeIds.value.has(nodeId)) {
         startMultiNodeDrag(nodeId, event);
       } else {
-        // If not holding Ctrl, clear selection and drag just this node
         if (!event.ctrlKey && !event.metaKey) {
           selectedNodeIds.value = new Set([nodeId]);
         }
         startNodeDrag(nodeId, event, node.position);
       }
     }
-  } else if (event.button === 0 && event.shiftKey) {
-    // Shift + Left click = Pan
-    startPan(event);
-  } else if (event.button === 1) {
-    // Middle mouse button = Pan
-    event.preventDefault();
-    startPan(event);
-  } else if (event.button === 0 && !event.shiftKey) {
-    // Click on empty canvas = deselect all
-    selectedNodeIds.value = new Set();
+  } else if (!event.target.closest('.connection-handle')) {
+    // Click on empty canvas = deselect all (but not during pan)
+    if (event.button === 0 && !event.shiftKey) {
+      selectedNodeIds.value = new Set();
+    }
   }
 }
 
-function startPan(event) {
-  isPanning.value = true;
-  panStart.value = {
-    x: event.clientX - viewportTransform.value.x,
-    y: event.clientY - viewportTransform.value.y,
-  };
-  
-  document.addEventListener('mousemove', handlePan);
-  document.addEventListener('mouseup', endPan);
-}
+// Setup D3 zoom for pan and zoom
+function setupZoom() {
+  if (!canvasContainer.value) return;
 
-function handlePan(event) {
-  if (!isPanning.value) return;
+  const container = d3.select(canvasContainer.value);
   
-  viewportTransform.value = {
-    ...viewportTransform.value,
-    x: event.clientX - panStart.value.x,
-    y: event.clientY - panStart.value.y,
-  };
-}
+  // Remove existing zoom behavior
+  container.on(".zoom", null);
 
-function endPan() {
-  isPanning.value = false;
-  document.removeEventListener('mousemove', handlePan);
-  document.removeEventListener('mouseup', endPan);
+  zoomBehavior = d3
+    .zoom()
+    .scaleExtent([0.1, 3])
+    .filter((event) => {
+      // Allow wheel events for zoom
+      if (event.type === 'wheel') return true;
+      // Allow touch events for mobile pan/zoom
+      if (event.type === 'touchstart' || event.type === 'touchmove' || event.type === 'touchend') return true;
+      // For mouse: only pan with middle button, or left button on empty canvas (not on nodes)
+      if (event.type === 'mousedown') {
+        if (event.button === 1) return true; // middle button
+        if (event.button === 0 && !event.target.closest('[data-node-id]') && !event.target.closest('.connection-handle')) {
+          return true; // left click on empty canvas
+        }
+      }
+      return false;
+    })
+    .on("zoom", (event) => {
+      viewportTransform.value = {
+        x: event.transform.x,
+        y: event.transform.y,
+        scale: event.transform.k,
+      };
+    });
+
+  container.call(zoomBehavior);
+  
+  // Disable double-click zoom
+  container.on("dblclick.zoom", null);
 }
 
 // Node dragging (single node)
@@ -334,30 +340,6 @@ function endMultiNodeDrag(event) {
   
   document.removeEventListener('mousemove', handleMultiNodeDrag);
   document.removeEventListener('mouseup', endMultiNodeDrag);
-}
-
-// Zoom with mouse wheel
-function handleWheel(event) {
-  event.preventDefault();
-  
-  const delta = -event.deltaY;
-  const scaleChange = delta > 0 ? 1.1 : 0.9;
-  const newScale = Math.min(Math.max(viewportTransform.value.scale * scaleChange, 0.1), 3);
-  
-  // Zoom towards mouse position
-  const rect = canvasContainer.value.getBoundingClientRect();
-  const mouseX = event.clientX - rect.left;
-  const mouseY = event.clientY - rect.top;
-  
-  const scale = viewportTransform.value.scale;
-  const newX = mouseX - (mouseX - viewportTransform.value.x) * (newScale / scale);
-  const newY = mouseY - (mouseY - viewportTransform.value.y) * (newScale / scale);
-  
-  viewportTransform.value = {
-    x: newX,
-    y: newY,
-    scale: newScale,
-  };
 }
 
 // Start drawing a connection
@@ -559,6 +541,10 @@ watch(
     if (nodesWithPositions.value.length > 0) {
       await nextTick();
       drawConnections();
+      // Setup zoom if not already done (canvas just appeared)
+      if (!zoomBehavior && canvasContainer.value) {
+        setupZoom();
+      }
     }
   },
   { deep: true, immediate: true },
@@ -569,10 +555,21 @@ watch(focusedSection, () => {
   nodePositions.value = {};
   selectedNodeIds.value = new Set();
   viewportTransform.value = { x: 0, y: 0, scale: 1 };
+  // Reset D3 zoom transform
+  if (zoomBehavior && canvasContainer.value) {
+    d3.select(canvasContainer.value).call(zoomBehavior.transform, d3.zoomIdentity);
+  }
 });
 
 onMounted(() => {
   drawConnections();
+  nextTick(() => setupZoom());
+});
+
+onUnmounted(() => {
+  if (canvasContainer.value) {
+    d3.select(canvasContainer.value).on(".zoom", null);
+  }
 });
 
 // Expose zoomToNode method for parent component
@@ -580,61 +577,33 @@ defineExpose({
   zoomToNode,
 });
 
-// Zoom to a specific node with smooth animation (like Figma)
+// Zoom to a specific node with smooth animation
 function zoomToNode(nodeId) {
   const node = nodesWithPositions.value.find(n => n._id === nodeId);
-  if (!node || !node.position || !canvasContainer.value) return;
+  if (!node || !node.position || !canvasContainer.value || !zoomBehavior) return;
   
   const containerRect = canvasContainer.value.getBoundingClientRect();
   const nodeWidth = 250;
   const nodeHeight = 150;
   
-  // Calculate node center in canvas coordinates
   const nodeCenterX = node.position.x + nodeWidth / 2;
   const nodeCenterY = node.position.y + nodeHeight / 2;
   
-  // Calculate viewport center
   const viewportCenterX = containerRect.width / 2;
   const viewportCenterY = containerRect.height / 2;
   
-  // Target scale (zoom in a bit to focus on the node)
   const targetScale = 1.2;
   
-  // Calculate the transform needed to center the node
   const targetX = viewportCenterX - nodeCenterX * targetScale;
   const targetY = viewportCenterY - nodeCenterY * targetScale;
   
-  // Animate the transform (like Figma's smooth zoom)
-  animateViewport(targetX, targetY, targetScale, 400);
-}
-
-// Smooth animation for viewport transform
-function animateViewport(targetX, targetY, targetScale, duration) {
-  const startX = viewportTransform.value.x;
-  const startY = viewportTransform.value.y;
-  const startScale = viewportTransform.value.scale;
+  const targetTransform = d3.zoomIdentity.translate(targetX, targetY).scale(targetScale);
   
-  const startTime = performance.now();
-  
-  function animate(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Easing function (ease-out cubic for smooth deceleration)
-    const eased = 1 - Math.pow(1 - progress, 3);
-    
-    viewportTransform.value = {
-      x: startX + (targetX - startX) * eased,
-      y: startY + (targetY - startY) * eased,
-      scale: startScale + (targetScale - startScale) * eased,
-    };
-    
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    }
-  }
-  
-  requestAnimationFrame(animate);
+  d3.select(canvasContainer.value)
+    .transition()
+    .duration(400)
+    .ease(d3.easeCubicOut)
+    .call(zoomBehavior.transform, targetTransform);
 }
 </script>
 
@@ -652,7 +621,7 @@ function animateViewport(targetX, targetY, targetScale, duration) {
         <p class="section-info">
           {{ sectionNodes.length }} nodes
           <span v-if="selectedNodeIds.size > 0"> • {{ selectedNodeIds.size }} selected</span>
-          • Ctrl+Click to multi-select • Scroll to zoom • Shift+Drag to pan
+          • Ctrl+Click to multi-select • Scroll to zoom • Drag to pan
         </p>
       </div>
 
@@ -660,8 +629,6 @@ function animateViewport(targetX, targetY, targetScale, duration) {
         ref="canvasContainer"
         class="canvas-container" 
         @mousedown="handleMouseDown"
-        @wheel="handleWheel"
-        :class="{ panning: isPanning }"
       >
         <div class="canvas-layer" :style="canvasStyle">
           <svg class="connections-svg" width="10000" height="10000">
@@ -747,14 +714,15 @@ function animateViewport(targetX, targetY, targetScale, duration) {
   width: 100%;
   flex: 1;
   overflow: hidden;
-  cursor: default;
+  cursor: grab;
   background: 
     linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
     linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 50px 50px;
+  touch-action: none;
 }
 
-.canvas-container.panning {
+.canvas-container:active {
   cursor: grabbing;
 }
 
