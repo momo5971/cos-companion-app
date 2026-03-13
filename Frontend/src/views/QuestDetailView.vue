@@ -450,6 +450,10 @@ function openQuestInCompendium() {
   border: none;
   background: #1a1a2e;
   padding: 1rem;
+  padding-top: env(safe-area-inset-top, 1rem);
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+  padding-left: env(safe-area-inset-left, 1rem);
+  padding-right: env(safe-area-inset-right, 1rem);
 }
 
 .expand-btn {

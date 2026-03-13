@@ -851,6 +851,12 @@ async function handleDrop(sectionId, event) {
   transform: scale(1.1);
 }
 
+@media (hover: none) {
+  .quest-card {
+    cursor: default;
+  }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -992,6 +998,12 @@ async function handleDrop(sectionId, event) {
 
 .quest-card:hover .delete-quest-btn {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .delete-quest-btn {
+    opacity: 1;
+  }
 }
 
 .delete-quest-btn:hover {

@@ -281,7 +281,7 @@ async function deleteMap(mapId) {
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
-            <span>Back to Locations</span>
+            <span class="hidden sm:inline">Back to Locations</span>
           </button>
           
           <button 
@@ -293,7 +293,7 @@ async function deleteMap(mapId) {
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
             </svg>
-            <span>Parent Location</span>
+            <span class="hidden sm:inline">Parent Location</span>
           </button>
         </div>
 
@@ -308,7 +308,7 @@ async function deleteMap(mapId) {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            <span>Add Sub-Location</span>
+            <span class="hidden sm:inline">Add Sub-Location</span>
           </button>
           <button
             @click="openEditLocation"
@@ -318,7 +318,7 @@ async function deleteMap(mapId) {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
-            <span>Edit</span>
+            <span class="hidden sm:inline">Edit</span>
           </button>
           <button
             @click="handleDeleteLocation"
@@ -328,7 +328,7 @@ async function deleteMap(mapId) {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
-            <span>Delete</span>
+            <span class="hidden sm:inline">Delete</span>
           </button>
         </div>
 
@@ -445,7 +445,7 @@ async function deleteMap(mapId) {
 
 <style scoped>
 .location-detail-view {
-  @apply p-6 max-w-7xl mx-auto;
+  @apply p-3 sm:p-6 max-w-7xl mx-auto;
 }
 
 .loading-container,
@@ -632,6 +632,6 @@ async function deleteMap(mapId) {
 
 .map-section {
   @apply bg-gradient-to-br from-strahd-dark to-strahd-darker;
-  @apply border-2 border-strahd-red/30 rounded-xl p-6 shadow-glow-red;
+  @apply border-2 border-strahd-red/30 rounded-xl p-2 sm:p-6 shadow-glow-red;
 }
 </style>

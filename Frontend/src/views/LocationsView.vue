@@ -246,7 +246,7 @@ async function handleCreateLocation(locationData) {
 
 <style scoped>
 .locations-view {
-  @apply p-6 max-w-7xl mx-auto;
+  @apply p-3 sm:p-6 max-w-7xl mx-auto;
 }
 
 .empty-state {
@@ -255,7 +255,7 @@ async function handleCreateLocation(locationData) {
 
 .locations-grid {
   @apply grid gap-6;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
 }
 
 .location-card {
@@ -368,6 +368,12 @@ async function handleCreateLocation(locationData) {
 
 .location-card:hover .delete-location-btn {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .delete-location-btn {
+    opacity: 1;
+  }
 }
 
 .delete-location-btn:hover {

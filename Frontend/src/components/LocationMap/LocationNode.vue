@@ -31,6 +31,26 @@ const emit = defineEmits([
 const isDragging = ref(false);
 const dragStart = ref(null);
 
+// Long-press for mobile (toggle completed)
+let longPressTimer = null;
+const didLongPress = ref(false);
+
+function handleTouchStart(event) {
+  didLongPress.value = false;
+  longPressTimer = setTimeout(() => {
+    didLongPress.value = true;
+    emit("toggle-completed", props.node);
+  }, 500);
+}
+
+function handleTouchMove() {
+  clearTimeout(longPressTimer);
+}
+
+function handleTouchEnd() {
+  clearTimeout(longPressTimer);
+}
+
 // Position styling
 const nodeStyle = computed(() => ({
   left: `${props.node.position.x}px`,
@@ -83,6 +103,11 @@ const nodeColor = computed(() => {
 });
 
 function handleClick(event) {
+  // Skip if long-press just triggered
+  if (didLongPress.value) {
+    didLongPress.value = false;
+    return;
+  }
   // Only emit view-details if not dragging
   if (!isDragging.value) {
     emit("view-details", props.node);
@@ -161,6 +186,9 @@ function handleMouseUp() {
     @click="handleClick"
     @mousedown="handleMouseDown"
     @contextmenu="handleRightClick"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
   >
     <!-- Node marker (pin/dot) -->
     <div class="node-marker">

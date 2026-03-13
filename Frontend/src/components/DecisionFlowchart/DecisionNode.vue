@@ -107,9 +107,58 @@ const isDraggingNode = ref(false);
 // Touch double-tap detection
 let lastTapTime = 0;
 
+// Long-press for mobile (toggle completed)
+let longPressTimer = null;
+const didLongPress = ref(false);
+
+function handleTouchStart() {
+  didLongPress.value = false;
+  longPressTimer = setTimeout(async () => {
+    didLongPress.value = true;
+    await toggleCompleted(new Event('touchstart'));
+  }, 500);
+}
+
+function handleTouchMoveNode() {
+  clearTimeout(longPressTimer);
+}
+
+function handleTouchEndNode(event) {
+  clearTimeout(longPressTimer);
+
+  // Skip double-tap detection if long-press fired
+  if (didLongPress.value) {
+    didLongPress.value = false;
+    return;
+  }
+
+  // Skip if dragging
+  if (isDraggingNode.value) {
+    isDraggingNode.value = false;
+    return;
+  }
+
+  if (event.target.closest('.connection-handle')) return;
+
+  const now = Date.now();
+  if (now - lastTapTime < 400) {
+    event.preventDefault();
+    emit("viewDetails", props.node);
+    lastTapTime = 0;
+  } else {
+    lastTapTime = now;
+  }
+}
+
 function viewDetails(event) {
   // Emit node-click for selection handling
   emit("nodeClick", props.node, event);
+  
+  // Skip if long-press just triggered
+  if (didLongPress.value) {
+    didLongPress.value = false;
+    return;
+  }
   
   // Only open details if we didn't just finish dragging
   if (isDraggingNode.value) {
@@ -129,33 +178,11 @@ function viewDetails(event) {
 }
 
 function handleDoubleClick(event) {
-  // Don't open if clicking on connection handle
   if (event.target.closest('.connection-handle')) {
     return;
   }
   
   emit("viewDetails", props.node);
-}
-
-function handleTouchEnd(event) {
-  // Skip if dragging
-  if (isDraggingNode.value) {
-    isDraggingNode.value = false;
-    return;
-  }
-
-  // Skip connection handle
-  if (event.target.closest('.connection-handle')) return;
-
-  const now = Date.now();
-  if (now - lastTapTime < 400) {
-    // Double tap detected
-    event.preventDefault();
-    emit("viewDetails", props.node);
-    lastTapTime = 0;
-  } else {
-    lastTapTime = now;
-  }
 }
 
 // Track if node was dragged to prevent opening modal
@@ -183,7 +210,9 @@ watch(() => props.isDragging, (newVal) => {
     :data-node-id="node._id"
     @click="viewDetails"
     @dblclick="handleDoubleClick"
-    @touchend="handleTouchEnd"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMoveNode"
+    @touchend="handleTouchEndNode"
     @contextmenu="toggleCompleted"
     title="Click to select • Ctrl+Click to multi-select • Drag to move • Double-click for details • Right-click to toggle completed"
   >
@@ -386,6 +415,12 @@ watch(() => props.isDragging, (newVal) => {
 
 .decision-node:hover .connection-handle {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .connection-handle {
+    opacity: 1;
+  }
 }
 
 .connection-handle:hover {
