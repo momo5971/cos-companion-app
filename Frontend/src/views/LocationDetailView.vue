@@ -479,11 +479,11 @@ async function deleteMap(mapId) {
 }
 
 .location-info {
-  @apply flex items-center gap-4 mb-4 flex-wrap;
+  @apply flex items-start sm:items-center gap-3 sm:gap-4 mb-4 flex-wrap;
 }
 
 .location-title {
-  @apply text-4xl font-bold text-strahd-red;
+  @apply text-2xl sm:text-4xl font-bold text-strahd-red w-full sm:w-auto;
   font-family: 'Cinzel', serif;
 }
 
@@ -519,7 +519,7 @@ async function deleteMap(mapId) {
 }
 
 .add-map-form {
-  @apply flex gap-2 mb-4 p-4 bg-strahd-dark border border-strahd-gold/30 rounded-lg;
+  @apply flex flex-col sm:flex-row gap-2 mb-4 p-4 bg-strahd-dark border border-strahd-gold/30 rounded-lg;
 }
 
 .map-name-input {

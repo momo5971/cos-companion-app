@@ -16,21 +16,21 @@ const saveStatus = computed(() => campaignStore.saveStatus);
     <!-- Decorative top border -->
     <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-strahd-red to-transparent opacity-50"></div>
     
-    <div class="container mx-auto px-4 py-8">
-      <div class="flex items-center justify-between">
+    <div class="container mx-auto px-4 py-4 sm:py-8">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <!-- Title with dramatic styling -->
         <div class="relative">
-          <h1 class="text-5xl font-bold text-strahd-red text-glow-red tracking-wide">
+          <h1 class="text-3xl sm:text-5xl font-bold text-strahd-red text-glow-red tracking-wide">
             Curse of Strahd
           </h1>
-          <p class="text-strahd-gold text-sm tracking-widest uppercase mt-1 opacity-80">
+          <p class="text-strahd-gold text-xs sm:text-sm tracking-widest uppercase mt-1 opacity-80">
             Reloaded Campaign Companion
           </p>
           <!-- Decorative underline -->
           <div class="absolute -bottom-2 left-0 w-32 h-0.5 bg-gradient-to-r from-strahd-red to-transparent"></div>
         </div>
 
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-3 sm:gap-6 flex-wrap">
           <!-- Save Status Indicator with icon -->
           <div v-if="hasActiveCampaign" class="flex items-center gap-2 px-3 py-2 bg-strahd-dark/50 rounded-lg border border-strahd-red/30">
             <div class="relative">
@@ -62,13 +62,14 @@ const saveStatus = computed(() => campaignStore.saveStatus);
           <!-- Manage Campaigns Button with enhanced styling -->
           <button
             @click="showManageModal = true"
-            class="btn-secondary shadow-lg hover:shadow-glow-gold transition-smooth"
+            class="btn-secondary shadow-lg hover:shadow-glow-gold transition-smooth text-sm sm:text-base"
           >
             <span class="flex items-center gap-2">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
               </svg>
-              Manage Campaigns
+              <span class="hidden sm:inline">Manage Campaigns</span>
+              <span class="sm:hidden">Manage</span>
             </span>
           </button>
         </div>

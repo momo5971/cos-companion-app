@@ -96,6 +96,7 @@
 
   .modal-content {
     @apply bg-strahd-dark border-2 border-strahd-red rounded-lg shadow-glow-red;
+    @apply mx-4 max-h-[90vh] overflow-y-auto w-full max-w-2xl;
     animation: slideUp 0.3s ease-out;
   }
 

@@ -174,11 +174,11 @@ function openQuestInCompendium() {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
-            Edit Quest
+            <span class="hidden sm:inline">Edit Quest</span>
           </button>
 
           <!-- Quest Action Buttons -->
-          <div class="flex gap-2 ml-auto">
+          <div class="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
             <button
               v-if="questStatus !== 'in-progress'"
               @click="markAsActive"
@@ -295,7 +295,7 @@ function openQuestInCompendium() {
 
 .quest-detail {
   @apply bg-gradient-to-br from-strahd-dark to-strahd-darker;
-  @apply border-2 border-strahd-red/30 rounded-xl p-8 shadow-xl;
+  @apply border-2 border-strahd-red/30 rounded-xl p-4 sm:p-8 shadow-xl;
 }
 
 .quest-header {
@@ -403,8 +403,8 @@ function openQuestInCompendium() {
 }
 
 .flowchart-section {
-  @apply bg-strahd-darker/50 border-2 border-strahd-red/30 rounded-xl p-6;
-  height: 800px;
+  @apply bg-strahd-darker/50 border-2 border-strahd-red/30 rounded-xl p-4 sm:p-6;
+  height: clamp(400px, 60vh, 800px);
   display: flex;
   flex-direction: column;
 }

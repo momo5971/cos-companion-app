@@ -212,9 +212,9 @@ async function handleDrop(sectionId, event) {
 <template>
   <div class="animate-fade-in">
     <!-- Page Header -->
-    <div class="relative mb-8 flex justify-between items-start">
+    <div class="relative mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
       <div>
-        <h2 class="text-4xl font-bold text-strahd-red text-glow-red">Quests</h2>
+        <h2 class="text-3xl sm:text-4xl font-bold text-strahd-red text-glow-red">Quests</h2>
         <div
           class="absolute -bottom-2 left-0 w-24 h-1 bg-gradient-to-r from-strahd-red to-transparent"
         ></div>
@@ -699,7 +699,7 @@ async function handleDrop(sectionId, event) {
 <style scoped>
 .act-section {
   @apply bg-gradient-to-br from-strahd-dark to-strahd-darker;
-  @apply border-2 border-strahd-red/30 rounded-xl p-8 shadow-xl;
+  @apply border-2 border-strahd-red/30 rounded-xl p-4 sm:p-8 shadow-xl;
   @apply transition-all duration-300;
 }
 
@@ -709,7 +709,7 @@ async function handleDrop(sectionId, event) {
 }
 
 .location-section {
-  @apply ml-6 pl-6 border-l-2 border-strahd-gold/30;
+  @apply ml-2 sm:ml-6 pl-4 sm:pl-6 border-l-2 border-strahd-gold/30;
 }
 
 .quest-card {

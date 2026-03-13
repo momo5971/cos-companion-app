@@ -175,7 +175,7 @@ function isHighlighted(event) {
     <div v-else class="relative">
       <!-- Vertical line -->
       <div
-        class="absolute left-20 top-0 bottom-0 w-0.5 bg-strahd-gold/30"
+        class="absolute left-4 sm:left-20 top-0 bottom-0 w-0.5 bg-strahd-gold/30"
       ></div>
 
       <!-- Events -->
@@ -184,25 +184,29 @@ function isHighlighted(event) {
           v-for="event in filteredEvents"
           :key="event._id"
           :id="`event-${event._id}`"
-          class="timeline-event relative pl-24 animate-slide-up"
+          class="timeline-event relative pl-10 sm:pl-24 animate-slide-up"
           :class="{ highlighted: isHighlighted(event) }"
         >
           <!-- Year on the left -->
           <div
-            class="absolute left-0 w-16 text-right text-strahd-gold font-bold text-sm"
+            class="hidden sm:block absolute left-0 w-16 text-right text-strahd-gold font-bold text-sm"
           >
             {{ formatYear(event.year) }}
           </div>
 
           <!-- Timeline dot -->
           <div
-            class="absolute left-[4.625rem] w-5 h-5 bg-strahd-red border-4 border-strahd-dark rounded-full shadow-glow-red"
+            class="absolute left-[0.875rem] sm:left-[4.625rem] w-4 h-4 sm:w-5 sm:h-5 bg-strahd-red border-4 border-strahd-dark rounded-full shadow-glow-red"
           ></div>
 
           <!-- Event card -->
           <div
-            class="event-card bg-strahd-darker border-2 border-strahd-red/30 rounded-lg p-6 shadow-xl transition-all duration-300 ml-8"
+            class="event-card bg-strahd-darker border-2 border-strahd-red/30 rounded-lg p-4 sm:p-6 shadow-xl transition-all duration-300 ml-4 sm:ml-8"
           >
+            <!-- Year (mobile only, inside card) -->
+            <div class="sm:hidden text-strahd-gold font-bold text-xs mb-2">
+              {{ formatYear(event.year) }}
+            </div>
             <!-- Title -->
             <h3 class="text-2xl font-bold text-strahd-red mb-3">
               {{ event.title }}

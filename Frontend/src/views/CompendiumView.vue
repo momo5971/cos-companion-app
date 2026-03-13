@@ -428,11 +428,11 @@ async function handleEntryCreated() {
 }
 
 .search-bar {
-  @apply flex gap-4 mb-8 flex-wrap items-center;
+  @apply flex gap-4 mb-8 flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center;
 }
 
 .search-input-wrapper {
-  @apply relative flex-1 min-w-[300px];
+  @apply relative flex-1 min-w-0 sm:min-w-[300px];
 }
 
 .search-icon {
@@ -482,8 +482,8 @@ async function handleEntryCreated() {
 }
 
 .entries-grid {
-  @apply grid gap-6;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  @apply grid gap-4 sm:gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
 }
 
 .entry-card {

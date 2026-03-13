@@ -27,15 +27,39 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Connect to MongoDB
 connectDB();
 
-// API Routes
-app.use("/api/locations", locationRoutes);
-app.use("/api/campaigns", campaignRoutes);
-app.use("/api/quests", questRoutes);
-app.use("/api/quest-sections", questSectionRoutes);
-app.use("/api/compendium", compendiumRoutes);
-app.use("/api/decision-nodes", decisionNodeRoutes);
-app.use("/api/timeline", timelineRoutes);
-app.use("/api/sections", sectionRoutes);
+// Auth middleware for API routes
+const authMiddleware = (req, res, next) => {
+  // Skip auth if no secret is configured
+  if (!process.env.APP_SECRET) return next();
+
+  const token = req.headers["x-app-token"];
+  if (token === process.env.APP_SECRET) {
+    return next();
+  }
+  return res.status(401).json({ message: "Unauthorized" });
+};
+
+// Auth verification endpoint
+app.post("/api/auth/verify", (req, res) => {
+  if (!process.env.APP_SECRET) {
+    return res.json({ valid: true });
+  }
+  const { token } = req.body;
+  if (token === process.env.APP_SECRET) {
+    return res.json({ valid: true });
+  }
+  return res.status(401).json({ valid: false, message: "Invalid password" });
+});
+
+// API Routes (protected)
+app.use("/api/locations", authMiddleware, locationRoutes);
+app.use("/api/campaigns", authMiddleware, campaignRoutes);
+app.use("/api/quests", authMiddleware, questRoutes);
+app.use("/api/quest-sections", authMiddleware, questSectionRoutes);
+app.use("/api/compendium", authMiddleware, compendiumRoutes);
+app.use("/api/decision-nodes", authMiddleware, decisionNodeRoutes);
+app.use("/api/timeline", authMiddleware, timelineRoutes);
+app.use("/api/sections", authMiddleware, sectionRoutes);
 
 // Serve Vue frontend in production
 const distPath = path.join(__dirname, "../../Frontend/dist");
