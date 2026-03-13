@@ -27,6 +27,13 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Connect to MongoDB
 connectDB();
 
+// Register Mongoose discriminator models
+import "./models/LocationEntry.js";
+import "./models/Npc.js";
+import "./models/Monster.js";
+import "./models/Item.js";
+import "./models/QuestEntry.js";
+
 // Auth middleware for API routes
 const authMiddleware = (req, res, next) => {
   // Skip auth if no secret is configured
