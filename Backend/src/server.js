@@ -1,7 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./config/database.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import locationRoutes from "./routes/locationRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
 import questRoutes from "./routes/questRoutes.js";
@@ -23,11 +27,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Connect to MongoDB
 connectDB();
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("API is running...");
-});
-
+// API Routes
 app.use("/api/locations", locationRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/quests", questRoutes);
@@ -36,6 +36,15 @@ app.use("/api/compendium", compendiumRoutes);
 app.use("/api/decision-nodes", decisionNodeRoutes);
 app.use("/api/timeline", timelineRoutes);
 app.use("/api/sections", sectionRoutes);
+
+// Serve Vue frontend in production
+const distPath = path.join(__dirname, "../../Frontend/dist");
+app.use(express.static(distPath));
+
+// Catch-all: send index.html for client-side routing
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
