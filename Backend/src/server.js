@@ -42,7 +42,7 @@ const distPath = path.join(__dirname, "../../Frontend/dist");
 app.use(express.static(distPath));
 
 // Catch-all: send index.html for client-side routing
-app.get("*", (req, res) => {
+app.get("{*path}", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
