@@ -199,25 +199,34 @@ function handleNavigateToLocation(locationId) {
   router.push(`/locations/${locationId}`);
 }
 
+// Wait for map image to load before setting up zoom
+function waitForImageAndSetup() {
+  if (!mapContainer.value || !mapImageUrl.value) return;
+  
+  const img = mapContainer.value.querySelector('.map-image');
+  if (!img) return;
+  
+  if (img.naturalWidth > 0) {
+    // Image already loaded
+    setupZoom();
+  } else {
+    // Wait for image to load
+    img.addEventListener('load', () => setupZoom(), { once: true });
+  }
+}
+
 // Load viewport states from store on mount
 onMounted(async () => {
-  // Wait for next tick to ensure DOM is ready
   await nextTick();
-  
-  // Wait a bit more for images to start loading
-  setTimeout(() => {
-    if (mapContainer.value && mapImageUrl.value) {
-      setupZoom();
-    }
-  }, 50);
+  waitForImageAndSetup();
 });
 
 // Watch for map changes and restore viewport
 watch(() => props.selectedMapId, async (newMapId, oldMapId) => {
   if (newMapId !== oldMapId && newMapId) {
-    isViewportReady.value = false; // Hide during transition
+    isViewportReady.value = false;
     await nextTick();
-    setupZoom();
+    waitForImageAndSetup();
   }
 });
 
@@ -225,7 +234,7 @@ watch(() => props.selectedMapId, async (newMapId, oldMapId) => {
 watch(() => mapImageUrl.value, async (newUrl) => {
   if (newUrl && mapContainer.value && !isViewportReady.value) {
     await nextTick();
-    setupZoom();
+    waitForImageAndSetup();
   }
 });
 
@@ -240,7 +249,7 @@ function setupZoom() {
 
   currentZoom = d3
     .zoom()
-    .scaleExtent([0.5, 3])
+    .scaleExtent([0.1, 3])
     .on("zoom", (event) => {
       transform.value = event.transform;
 
@@ -282,7 +291,7 @@ function saveViewportState() {
   }
 }
 
-// Restore viewport state from store or reset to default
+// Restore viewport state from store or reset to fit
 function restoreViewportState(container) {
   const mapKey = getMapKey();
   
@@ -299,8 +308,23 @@ function restoreViewportState(container) {
       .translate(saved.x, saved.y)
       .scale(saved.k);
   } else {
-    // Reset to default (centered, scale 1)
-    targetTransform = d3.zoomIdentity.translate(0, 0).scale(1);
+    // Auto-fit: scale image to fit container
+    const img = mapContainer.value?.querySelector('.map-image');
+    const containerRect = mapContainer.value?.getBoundingClientRect();
+    
+    if (img && containerRect && img.naturalWidth && img.naturalHeight) {
+      const scaleX = containerRect.width / img.naturalWidth;
+      const scaleY = containerRect.height / img.naturalHeight;
+      const fitScale = Math.min(scaleX, scaleY, 1); // Don't upscale small images
+      
+      // Center the image
+      const offsetX = (containerRect.width - img.naturalWidth * fitScale) / 2;
+      const offsetY = (containerRect.height - img.naturalHeight * fitScale) / 2;
+      
+      targetTransform = d3.zoomIdentity.translate(offsetX, offsetY).scale(fitScale);
+    } else {
+      targetTransform = d3.zoomIdentity.translate(0, 0).scale(1);
+    }
   }
   
   // Apply transform immediately to the map content (before D3 zoom)
@@ -431,7 +455,7 @@ function restoreViewportState(container) {
 
 .map-image {
   display: block;
-  max-width: 100%;
+  max-width: none;
   height: auto;
   user-select: none;
   pointer-events: none;
