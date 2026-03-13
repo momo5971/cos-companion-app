@@ -29,10 +29,10 @@ watch(() => locationId.value, async (newId) => {
 
 const currentLocation = computed(() => {
   // Prefer the dedicated currentLocation (has full image data)
-  if (locationStore.currentLocation?._id === locationId.value) {
+  if (locationStore.currentLocation && String(locationStore.currentLocation._id) === String(locationId.value)) {
     return locationStore.currentLocation;
   }
-  return locationStore.locations.find((loc) => loc._id === locationId.value);
+  return locationStore.locations.find((loc) => String(loc._id) === String(locationId.value));
 });
 
 onMounted(async () => {

@@ -43,10 +43,10 @@ const props = defineProps({
 // Get current location
 const currentLocation = computed(() => {
   // Prefer the dedicated currentLocation (has full image data)
-  if (locationStore.currentLocation?._id === props.locationId) {
+  if (locationStore.currentLocation && String(locationStore.currentLocation._id) === String(props.locationId)) {
     return locationStore.currentLocation;
   }
-  return locationStore.locations.find((loc) => loc._id === props.locationId);
+  return locationStore.locations.find((loc) => String(loc._id) === String(props.locationId));
 });
 
 // Get nodes with positions
@@ -201,14 +201,6 @@ function handleNavigateToLocation(locationId) {
 
 // Load viewport states from store on mount
 onMounted(async () => {
-  // Fetch the specific location if not already loaded
-  if (!currentLocation.value) {
-    const campaignStore = useCampaignStore();
-    if (campaignStore.activeCampaign?._id) {
-      await locationStore.fetchLocations(campaignStore.activeCampaign._id);
-    }
-  }
-
   // Wait for next tick to ensure DOM is ready
   await nextTick();
   
@@ -224,6 +216,14 @@ onMounted(async () => {
 watch(() => props.selectedMapId, async (newMapId, oldMapId) => {
   if (newMapId !== oldMapId && newMapId) {
     isViewportReady.value = false; // Hide during transition
+    await nextTick();
+    setupZoom();
+  }
+});
+
+// Also setup zoom when map image becomes available (async load)
+watch(() => mapImageUrl.value, async (newUrl) => {
+  if (newUrl && mapContainer.value && !isViewportReady.value) {
     await nextTick();
     setupZoom();
   }
