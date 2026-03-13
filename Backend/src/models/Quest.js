@@ -16,7 +16,7 @@ const questSchema = new mongoose.Schema(
     },
     location: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Location",
+      ref: "LocationMap",
     },
     status: {
       type: String,
@@ -34,7 +34,7 @@ const questSchema = new mongoose.Schema(
     connections: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Quest",
+        ref: "QuestDoc",
       },
     ],
     campaignId: {
@@ -48,4 +48,4 @@ const questSchema = new mongoose.Schema(
   },
 );
 
-export default mongoose.model("Quest", questSchema);
+export default mongoose.model("QuestDoc", questSchema, "quests");

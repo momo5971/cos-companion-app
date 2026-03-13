@@ -25,24 +25,24 @@ export const campaignSchema = new mongoose.Schema(
     // Quest tracking
     currentQuest: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quest",
+      ref: "QuestDoc",
     },
     completedQuests: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Quest",
+        ref: "QuestDoc",
       },
     ],
     activeQuests: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Quest",
+        ref: "QuestDoc",
       },
     ],
     // Location tracking
     activeLocation: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Location",
+      ref: "LocationMap",
     },
     // Decision nodes completion tracking
     completedDecisionNodes: [
@@ -56,7 +56,7 @@ export const campaignSchema = new mongoose.Schema(
       {
         locationId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Location",
+          ref: "LocationMap",
         },
         nodeName: String,
       },

@@ -5,7 +5,7 @@ const questEntrySchema = new mongoose.Schema(
   {
     questId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quest",
+      ref: "QuestDoc",
     },
     questStatus: {
       type: String,

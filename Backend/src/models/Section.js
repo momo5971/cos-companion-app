@@ -8,7 +8,7 @@ const sectionSchema = new mongoose.Schema(
     },
     questId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quest",
+      ref: "QuestDoc",
       required: true,
     },
     campaignId: {

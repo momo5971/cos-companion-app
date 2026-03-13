@@ -56,7 +56,7 @@ const locationSchema = new mongoose.Schema(
     },
     parentLocationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Location",
+      ref: "LocationMap",
       default: null,
     },
     nodes: [
@@ -82,7 +82,7 @@ const locationSchema = new mongoose.Schema(
         },
         linkedLocationId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Location",
+          ref: "LocationMap",
           default: null,
         },
         mapId: {
