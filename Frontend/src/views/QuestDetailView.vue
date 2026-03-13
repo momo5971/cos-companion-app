@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed } from "vue";
+import { onMounted, onUnmounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuestStore } from "../stores/questStore";
 import { useCampaignStore } from "../stores/campaignStore";
@@ -14,10 +14,26 @@ const questStore = useQuestStore();
 const campaignStore = useCampaignStore();
 const decisionFlowchartRef = ref(null);
 const showEditModal = ref(false);
+const isFlowchartExpanded = ref(false);
 const { navigateToCompendiumEntry } = useCompendiumNavigation();
+
+function toggleFlowchartExpand() {
+  isFlowchartExpanded.value = !isFlowchartExpanded.value;
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Escape' && isFlowchartExpanded.value) {
+    isFlowchartExpanded.value = false;
+  }
+}
 
 onMounted(() => {
   questStore.fetchQuestById(route.params.id);
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
 });
 
 function goBack() {
@@ -256,7 +272,7 @@ function openQuestInCompendium() {
       </div>
 
       <!-- Decision Flowchart Section -->
-      <div class="flowchart-section">
+      <div class="flowchart-section" :class="{ 'flowchart-expanded': isFlowchartExpanded }">
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-3">
             <svg class="w-8 h-8 text-strahd-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,12 +280,24 @@ function openQuestInCompendium() {
             </svg>
             <h3 class="text-3xl font-bold text-strahd-red text-glow-red">Decision Paths</h3>
           </div>
-          <button @click="openCreateNodeModal" class="create-node-btn">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Create Node
-          </button>
+          <div class="flex items-center gap-2">
+            <button @click="openCreateNodeModal" class="create-node-btn">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span class="hidden sm:inline">Create Node</span>
+            </button>
+            <button @click="toggleFlowchartExpand" class="expand-btn" :title="isFlowchartExpanded ? 'Collapse (Esc)' : 'Expand fullscreen'">
+              <!-- Expand icon -->
+              <svg v-if="!isFlowchartExpanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+              </svg>
+              <!-- Collapse icon -->
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="flowchart-wrapper">
           <DecisionFlowchart ref="decisionFlowchartRef" :questId="questStore.currentQuest._id" />
@@ -407,6 +435,42 @@ function openQuestInCompendium() {
   height: clamp(400px, 60vh, 800px);
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.flowchart-expanded {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+  background: #1a1a2e;
+  padding: 1rem;
+}
+
+.expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: #8b0000;
+  border: 2px solid #8b0000;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.expand-btn:hover {
+  background: #a00000;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.6);
+  transform: translateY(-2px);
 }
 
 .flowchart-wrapper {

@@ -28,6 +28,10 @@ watch(() => locationId.value, async (newId) => {
 });
 
 const currentLocation = computed(() => {
+  // Prefer the dedicated currentLocation (has full image data)
+  if (locationStore.currentLocation?._id === locationId.value) {
+    return locationStore.currentLocation;
+  }
   return locationStore.locations.find((loc) => loc._id === locationId.value);
 });
 

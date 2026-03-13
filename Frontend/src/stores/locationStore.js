@@ -57,7 +57,8 @@ export const useLocationStore = defineStore("location", () => {
   async function fetchLocationById(id) {
     try {
       const fullLocation = await locationService.getLocationById(id);
-      // Update in the locations array if present
+      currentLocation.value = fullLocation;
+      // Also update in the locations array if present
       const index = locations.value.findIndex((l) => l._id === id);
       if (index !== -1) {
         locations.value[index] = fullLocation;
@@ -128,29 +129,33 @@ export const useLocationStore = defineStore("location", () => {
 
   async function updateLocationNodePosition(locationId, nodeId, position) {
     try {
-      const locationIndex = locations.value.findIndex(
-        (loc) => loc._id === locationId,
-      );
-      if (locationIndex === -1) return;
+      const location =
+        currentLocation.value?._id === locationId
+          ? currentLocation.value
+          : locations.value.find((loc) => loc._id === locationId);
+      if (!location) return;
 
-      const location = locations.value[locationIndex];
       const nodeIndex = location.nodes.findIndex((n) => n.id === nodeId);
 
       if (nodeIndex !== -1) {
-        // Create new nodes array with updated position
         const updatedNodes = [...location.nodes];
         updatedNodes[nodeIndex] = {
           ...updatedNodes[nodeIndex],
           position: { ...position },
         };
 
-        // Update location with new nodes array
-        locations.value[locationIndex] = {
-          ...location,
-          nodes: updatedNodes,
-        };
+        const updatedLocation = { ...location, nodes: updatedNodes };
 
-        // Only send nodes, not the full location with maps
+        const locationIndex = locations.value.findIndex(
+          (loc) => loc._id === locationId,
+        );
+        if (locationIndex !== -1) {
+          locations.value[locationIndex] = updatedLocation;
+        }
+        if (currentLocation.value?._id === locationId) {
+          currentLocation.value = updatedLocation;
+        }
+
         await locationService.updateLocation(locationId, {
           nodes: updatedNodes,
         });
@@ -180,13 +185,15 @@ export const useLocationStore = defineStore("location", () => {
 
   async function toggleNodeCompleted(locationId, nodeId) {
     try {
-      const location = locations.value.find((loc) => loc._id === locationId);
+      const location =
+        currentLocation.value?._id === locationId
+          ? currentLocation.value
+          : locations.value.find((loc) => loc._id === locationId);
       if (!location) return;
 
       const node = location.nodes.find((n) => n.id === nodeId);
       if (node) {
         node.completed = !node.completed;
-        // Only send nodes, not the full location with maps
         await locationService.updateLocation(locationId, {
           nodes: location.nodes,
         });
@@ -201,9 +208,13 @@ export const useLocationStore = defineStore("location", () => {
       const locationIndex = locations.value.findIndex(
         (loc) => loc._id === locationId,
       );
-      if (locationIndex === -1) return;
+      if (locationIndex === -1 && currentLocation.value?._id !== locationId)
+        return;
 
-      const location = locations.value[locationIndex];
+      const location =
+        currentLocation.value?._id === locationId
+          ? currentLocation.value
+          : locations.value[locationIndex];
 
       // Generate unique ID for the node
       const nodeWithId = {
@@ -220,7 +231,12 @@ export const useLocationStore = defineStore("location", () => {
       });
 
       // Update with the response from backend
-      locations.value[locationIndex] = updatedLocation;
+      if (locationIndex !== -1) {
+        locations.value[locationIndex] = updatedLocation;
+      }
+      if (currentLocation.value?._id === locationId) {
+        currentLocation.value = updatedLocation;
+      }
 
       return updatedLocation;
     } catch (error) {
@@ -230,29 +246,33 @@ export const useLocationStore = defineStore("location", () => {
 
   async function updateNode(locationId, nodeId, updates) {
     try {
-      const locationIndex = locations.value.findIndex(
-        (loc) => loc._id === locationId,
-      );
-      if (locationIndex === -1) return;
+      const location =
+        currentLocation.value?._id === locationId
+          ? currentLocation.value
+          : locations.value.find((loc) => loc._id === locationId);
+      if (!location) return;
 
-      const location = locations.value[locationIndex];
       const nodeIndex = location.nodes.findIndex((n) => n.id === nodeId);
 
       if (nodeIndex !== -1) {
-        // Create a new nodes array to trigger reactivity
         const updatedNodes = [...location.nodes];
         updatedNodes[nodeIndex] = {
           ...updatedNodes[nodeIndex],
           ...updates,
         };
 
-        // Update the location with new nodes array
-        locations.value[locationIndex] = {
-          ...location,
-          nodes: updatedNodes,
-        };
+        const updatedLocation = { ...location, nodes: updatedNodes };
 
-        // Only send nodes, not the full location with maps
+        const locationIndex = locations.value.findIndex(
+          (loc) => loc._id === locationId,
+        );
+        if (locationIndex !== -1) {
+          locations.value[locationIndex] = updatedLocation;
+        }
+        if (currentLocation.value?._id === locationId) {
+          currentLocation.value = updatedLocation;
+        }
+
         await locationService.updateLocation(locationId, {
           nodes: updatedNodes,
         });
@@ -264,13 +284,15 @@ export const useLocationStore = defineStore("location", () => {
 
   async function deleteNode(locationId, nodeId) {
     try {
-      const location = locations.value.find((loc) => loc._id === locationId);
+      const location =
+        currentLocation.value?._id === locationId
+          ? currentLocation.value
+          : locations.value.find((loc) => loc._id === locationId);
       if (!location) return;
 
       const updatedNodes = location.nodes.filter((n) => n.id !== nodeId);
       location.nodes = updatedNodes;
 
-      // Only send nodes, not the full location with maps
       await locationService.updateLocation(locationId, { nodes: updatedNodes });
     } catch (error) {
       // Silent fail

@@ -42,6 +42,10 @@ const props = defineProps({
 
 // Get current location
 const currentLocation = computed(() => {
+  // Prefer the dedicated currentLocation (has full image data)
+  if (locationStore.currentLocation?._id === props.locationId) {
+    return locationStore.currentLocation;
+  }
   return locationStore.locations.find((loc) => loc._id === props.locationId);
 });
 
@@ -74,7 +78,7 @@ const mapImageUrl = computed(() => {
   if (currentLocation.value.maps && currentLocation.value.maps.length > 0) {
     if (props.selectedMapId) {
       const selectedMap = currentLocation.value.maps.find(
-        m => (m._id || m.name) === props.selectedMapId
+        m => (m.id || m._id || m.name) === props.selectedMapId
       );
       if (selectedMap?.image) {
         return selectedMap.image;
