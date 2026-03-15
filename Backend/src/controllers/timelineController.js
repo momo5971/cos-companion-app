@@ -20,3 +20,57 @@ export const getAllTimelineEvents = async (req, res) => {
     });
   }
 };
+
+export const createTimelineEvent = async (req, res) => {
+  try {
+    const { campaignId, year, title, description, category, order } = req.body;
+    if (!campaignId || year == null || !title || !description) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    const count = order ?? (await Timeline.countDocuments({ campaignId }));
+    const event = await Timeline.create({
+      campaignId,
+      year,
+      title,
+      description,
+      category,
+      order: count,
+    });
+    res.status(201).json(event);
+  } catch (error) {
+    console.error("Error creating timeline event", error);
+    res
+      .status(500)
+      .json({ message: "Error creating timeline event", error: error.message });
+  }
+};
+
+export const updateTimelineEvent = async (req, res) => {
+  try {
+    const event = await Timeline.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+    if (!event)
+      return res.status(404).json({ message: "Timeline event not found" });
+    res.status(200).json(event);
+  } catch (error) {
+    console.error("Error updating timeline event", error);
+    res
+      .status(500)
+      .json({ message: "Error updating timeline event", error: error.message });
+  }
+};
+
+export const deleteTimelineEvent = async (req, res) => {
+  try {
+    const event = await Timeline.findByIdAndDelete(req.params.id);
+    if (!event)
+      return res.status(404).json({ message: "Timeline event not found" });
+    res.status(200).json({ message: "Timeline event deleted" });
+  } catch (error) {
+    console.error("Error deleting timeline event", error);
+    res
+      .status(500)
+      .json({ message: "Error deleting timeline event", error: error.message });
+  }
+};
