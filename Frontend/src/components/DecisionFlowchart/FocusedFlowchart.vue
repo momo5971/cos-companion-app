@@ -27,6 +27,10 @@ const selectedNodeIds = ref(new Set());
 const isDrawingConnection = ref(false);
 const connectionStart = ref(null);
 
+// Selected connection state
+const selectedConnection = ref(null); // { fromId, toId }
+const connectionMidpoint = ref(null); // { x, y } in canvas coords
+
 // Viewport state (D3 zoom-based)
 const viewportTransform = ref({ x: 0, y: 0, scale: 1 });
 
@@ -176,11 +180,25 @@ function screenToCanvas(screenX, screenY) {
 function handleMouseDown(event) {
   const nodeElement = event.target.closest('[data-node-id]');
   
+  // Check if clicking on a connection line or its hit area
+  const connectionElement = event.target.closest('.connection-hit-area') || event.target.closest('.connection-line');
+  if (connectionElement) {
+    event.stopPropagation();
+    const fromId = connectionElement.getAttribute('data-from');
+    const toId = connectionElement.getAttribute('data-to');
+    if (fromId && toId) {
+      selectConnection(fromId, toId);
+    }
+    return;
+  }
+  
   if (nodeElement) {
     const nodeId = nodeElement.getAttribute('data-node-id');
     const node = nodesWithPositions.value.find(n => n._id === nodeId);
     
     if (node && !event.target.closest('.connection-handle')) {
+      selectedConnection.value = null;
+      connectionMidpoint.value = null;
       if (selectedNodeIds.value.has(nodeId)) {
         startMultiNodeDrag(nodeId, event);
       } else {
@@ -190,11 +208,80 @@ function handleMouseDown(event) {
         startNodeDrag(nodeId, event, node.position);
       }
     }
-  } else if (!event.target.closest('.connection-handle')) {
+  } else if (!event.target.closest('.connection-handle') && !event.target.closest('.connection-actions')) {
     // Click on empty canvas = deselect all (but not during pan)
     if (event.button === 0 && !event.shiftKey) {
       selectedNodeIds.value = new Set();
+      selectedConnection.value = null;
+      connectionMidpoint.value = null;
     }
+  }
+}
+
+function selectConnection(fromId, toId) {
+  selectedConnection.value = { fromId, toId };
+  selectedNodeIds.value = new Set();
+  
+  // Calculate midpoint for the action button
+  const fromNode = nodesWithPositions.value.find(n => n._id === fromId);
+  const toNode = nodesWithPositions.value.find(n => n._id === toId);
+  if (fromNode && toNode) {
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    connectionMidpoint.value = {
+      x: (fromNode.position.x + toNode.position.x + nodeWidth) / 2,
+      y: (fromNode.position.y + toNode.position.y + nodeHeight) / 2,
+    };
+  }
+  
+  drawConnections();
+}
+
+async function deleteSelectedConnection() {
+  if (!selectedConnection.value) return;
+  const { fromId, toId } = selectedConnection.value;
+  
+  try {
+    const fromNode = decisionNodeStore.nodes.find(n => n._id === fromId);
+    if (!fromNode) return;
+    
+    const updatedNextNodes = (fromNode.nextNodes || []).filter(id => id !== toId);
+    await decisionNodeStore.updateNode(fromId, { nextNodes: updatedNextNodes });
+    
+    selectedConnection.value = null;
+    connectionMidpoint.value = null;
+    await nextTick();
+    drawConnections();
+  } catch (error) {
+    console.error('Error deleting connection:', error);
+  }
+}
+
+async function reverseSelectedConnection() {
+  if (!selectedConnection.value) return;
+  const { fromId, toId } = selectedConnection.value;
+  
+  try {
+    // Remove from source
+    const fromNode = decisionNodeStore.nodes.find(n => n._id === fromId);
+    if (!fromNode) return;
+    const updatedFromNextNodes = (fromNode.nextNodes || []).filter(id => id !== toId);
+    await decisionNodeStore.updateNode(fromId, { nextNodes: updatedFromNextNodes });
+    
+    // Add to target (reverse direction)
+    const toNode = decisionNodeStore.nodes.find(n => n._id === toId);
+    if (!toNode) return;
+    const updatedToNextNodes = [...(toNode.nextNodes || [])];
+    if (!updatedToNextNodes.includes(fromId)) {
+      updatedToNextNodes.push(fromId);
+    }
+    await decisionNodeStore.updateNode(toId, { nextNodes: updatedToNextNodes });
+    
+    selectedConnection.value = { fromId: toId, toId: fromId };
+    await nextTick();
+    drawConnections();
+  } catch (error) {
+    console.error('Error reversing connection:', error);
   }
 }
 
@@ -254,7 +341,7 @@ function setupZoom() {
       // For mouse: only pan with middle button, or left button on empty canvas (not on nodes)
       if (event.type === 'mousedown') {
         if (event.button === 1) return true; // middle button
-        if (event.button === 0 && !event.target.closest('[data-node-id]') && !event.target.closest('.connection-handle')) {
+        if (event.button === 0 && !event.target.closest('[data-node-id]') && !event.target.closest('.connection-handle') && !event.target.closest('.connection-hit-area') && !event.target.closest('.connection-actions')) {
           return true; // left click on empty canvas
         }
       }
@@ -591,6 +678,26 @@ function drawLine(start, end, fromId, toId) {
     }
   }
 
+  const isSelected = selectedConnection.value &&
+    selectedConnection.value.fromId === fromId &&
+    selectedConnection.value.toId === toId;
+
+  // Invisible wider hit area for clicking
+  const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  hitArea.setAttribute('class', 'connection-hit-area');
+  hitArea.setAttribute('data-from', fromId);
+  hitArea.setAttribute('data-to', toId);
+  hitArea.setAttribute('x1', startX);
+  hitArea.setAttribute('y1', startY);
+  hitArea.setAttribute('x2', endX);
+  hitArea.setAttribute('y2', endY);
+  hitArea.setAttribute('stroke', 'transparent');
+  hitArea.setAttribute('stroke-width', '16');
+  hitArea.setAttribute('cursor', 'pointer');
+  hitArea.style.pointerEvents = 'all';
+  svg.appendChild(hitArea);
+
+  // Visible line
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.setAttribute('class', 'connection-line');
   line.setAttribute('data-from', fromId);
@@ -599,11 +706,26 @@ function drawLine(start, end, fromId, toId) {
   line.setAttribute('y1', startY);
   line.setAttribute('x2', endX);
   line.setAttribute('y2', endY);
-  line.setAttribute('stroke', '#d4af37');
-  line.setAttribute('stroke-width', '2');
-  line.setAttribute('opacity', '0.6');
-  
+  line.setAttribute('stroke', isSelected ? '#ff4444' : '#d4af37');
+  line.setAttribute('stroke-width', isSelected ? '3' : '2');
+  line.setAttribute('opacity', isSelected ? '1' : '0.6');
+  line.style.pointerEvents = 'none';
   svg.appendChild(line);
+
+  // Arrow head at the end
+  const angle = Math.atan2(endY - startY, endX - startX);
+  const arrowLen = 10;
+  const a1x = endX - arrowLen * Math.cos(angle - Math.PI / 6);
+  const a1y = endY - arrowLen * Math.sin(angle - Math.PI / 6);
+  const a2x = endX - arrowLen * Math.cos(angle + Math.PI / 6);
+  const a2y = endY - arrowLen * Math.sin(angle + Math.PI / 6);
+
+  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  arrow.setAttribute('points', `${endX},${endY} ${a1x},${a1y} ${a2x},${a2y}`);
+  arrow.setAttribute('fill', isSelected ? '#ff4444' : '#d4af37');
+  arrow.setAttribute('opacity', isSelected ? '1' : '0.6');
+  arrow.style.pointerEvents = 'none';
+  svg.appendChild(arrow);
 }
 
 watch(
@@ -625,6 +747,8 @@ watch(
 watch(focusedSection, () => {
   nodePositions.value = {}; // Clear local drag overrides (DB positions load via computed)
   selectedNodeIds.value = new Set();
+  selectedConnection.value = null;
+  connectionMidpoint.value = null;
   viewportTransform.value = { x: 0, y: 0, scale: 1 };
   // Reset D3 zoom transform
   if (zoomBehavior && canvasContainer.value) {
@@ -635,13 +759,29 @@ watch(focusedSection, () => {
 onMounted(() => {
   drawConnections();
   nextTick(() => setupZoom());
+  window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
   if (canvasContainer.value) {
     d3.select(canvasContainer.value).on(".zoom", null);
   }
+  window.removeEventListener('keydown', handleKeydown);
 });
+
+function handleKeydown(event) {
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (selectedConnection.value) {
+      event.preventDefault();
+      deleteSelectedConnection();
+    }
+  }
+  if (event.key === 'Escape') {
+    selectedConnection.value = null;
+    connectionMidpoint.value = null;
+    drawConnections();
+  }
+}
 
 // Expose zoomToNode method for parent component
 defineExpose({
@@ -692,7 +832,7 @@ function zoomToNode(nodeId) {
         <p class="section-info">
           {{ sectionNodes.length }} nodes
           <span v-if="selectedNodeIds.size > 0"> • {{ selectedNodeIds.size }} selected</span>
-          • Ctrl+Click to multi-select • Scroll to zoom • Drag to pan • Double-click to create node
+          • Ctrl+Click to multi-select • Scroll to zoom • Drag to pan • Click connection to edit
         </p>
       </div>
 
@@ -707,6 +847,24 @@ function zoomToNode(nodeId) {
           <svg class="connections-svg" width="10000" height="10000">
             <g ref="svgCanvas"></g>
           </svg>
+
+          <!-- Connection action buttons (at midpoint of selected connection) -->
+          <div
+            v-if="selectedConnection && connectionMidpoint"
+            class="connection-actions"
+            :style="{ left: connectionMidpoint.x + 'px', top: connectionMidpoint.y + 'px' }"
+          >
+            <button @click.stop="reverseSelectedConnection" class="conn-action-btn reverse" title="Reverse direction">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </button>
+            <button @click.stop="deleteSelectedConnection" class="conn-action-btn delete" title="Delete connection (Del)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
 
           <div class="nodes-container">
             <DecisionNode
@@ -813,7 +971,6 @@ function zoomToNode(nodeId) {
   position: absolute;
   top: 0;
   left: 0;
-  pointer-events: none;
   overflow: visible;
 }
 
@@ -825,8 +982,7 @@ function zoomToNode(nodeId) {
 
 .connection-line {
   transition: opacity 0.2s, stroke-width 0.2s;
-  cursor: pointer;
-  pointer-events: stroke;
+  pointer-events: none;
 }
 
 .connection-line.highlighted {
@@ -840,5 +996,50 @@ function zoomToNode(nodeId) {
 
 .temp-line {
   pointer-events: none;
+}
+
+/* Connection action buttons */
+.connection-actions {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 0.25rem;
+  z-index: 25;
+  pointer-events: auto;
+  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 0.35rem;
+}
+
+.conn-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.conn-action-btn.reverse {
+  background: #2563eb;
+}
+
+.conn-action-btn.reverse:hover {
+  background: #1d4ed8;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
+}
+
+.conn-action-btn.delete {
+  background: #dc2626;
+}
+
+.conn-action-btn.delete:hover {
+  background: #b91c1c;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.6);
 }
 </style>
