@@ -180,18 +180,6 @@ function screenToCanvas(screenX, screenY) {
 function handleMouseDown(event) {
   const nodeElement = event.target.closest('[data-node-id]');
   
-  // Check if clicking on a connection line or its hit area
-  const connectionElement = event.target.closest('.connection-hit-area') || event.target.closest('.connection-line');
-  if (connectionElement) {
-    event.stopPropagation();
-    const fromId = connectionElement.getAttribute('data-from');
-    const toId = connectionElement.getAttribute('data-to');
-    if (fromId && toId) {
-      selectConnection(fromId, toId);
-    }
-    return;
-  }
-  
   if (nodeElement) {
     const nodeId = nodeElement.getAttribute('data-node-id');
     const node = nodesWithPositions.value.find(n => n._id === nodeId);
@@ -695,6 +683,16 @@ function drawLine(start, end, fromId, toId) {
   hitArea.setAttribute('stroke-width', '16');
   hitArea.setAttribute('cursor', 'pointer');
   hitArea.style.pointerEvents = 'all';
+  hitArea.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    selectConnection(fromId, toId);
+  });
+  hitArea.addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    selectConnection(fromId, toId);
+  });
   svg.appendChild(hitArea);
 
   // Visible line
@@ -972,6 +970,7 @@ function zoomToNode(nodeId) {
   top: 0;
   left: 0;
   overflow: visible;
+  pointer-events: none;
 }
 
 .nodes-container {
