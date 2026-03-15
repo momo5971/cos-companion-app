@@ -12,15 +12,24 @@ const editingEvent = ref(null);
 
 // Form fields
 const formYear = ref(0);
+const formMonth = ref(null);
+const formDay = ref(null);
 const formTitle = ref("");
 const formDescription = ref("");
 const formCategory = ref("");
 
 const categories = [
-  "The Dark Powers",
-  "Strahd's History",
-  "Barovia",
-  "Current Events",
+  "The Ancient Era",
+  "The Founding Era",
+  "The Era of Blood",
+  "The Dark Era",
+  "The Dormant Era",
+  "Strahd's Awakening",
+];
+
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 onMounted(() => {
@@ -48,16 +57,31 @@ const filteredEvents = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return timelineStore.events.filter(
     (event) =>
-      String(event.year).toLowerCase().includes(query) ||
+      formatDate(event).toLowerCase().includes(query) ||
       event.title.toLowerCase().includes(query) ||
-      event.description.toLowerCase().includes(query),
+      event.description.toLowerCase().includes(query) ||
+      (event.category && event.category.toLowerCase().includes(query)),
   );
 });
 
-function formatYear(year) {
-  if (year < 0) return `${Math.abs(year)} BC`;
-  if (year === 0) return "Year 0";
-  return `Year ${year}`;
+function formatDate(event) {
+  const year = event.year;
+  let yearStr;
+  if (year < 0) {
+    yearStr = `${Math.abs(year)} BC`;
+  } else if (year === 0) {
+    yearStr = "Year 0";
+  } else {
+    yearStr = `Year ${year}`;
+  }
+
+  const parts = [];
+  if (event.day) parts.push(event.day);
+  if (event.month && event.month >= 1 && event.month <= 12) {
+    parts.push(monthNames[event.month - 1]);
+  }
+  parts.push(yearStr);
+  return parts.join(" ");
 }
 
 function handleSearch() {
@@ -71,6 +95,13 @@ function handleSearch() {
 
 function getCategoryColor(category) {
   const colors = {
+    "The Ancient Era": "bg-amber-900/50 text-amber-300 border-amber-700/50",
+    "The Founding Era": "bg-emerald-900/50 text-emerald-300 border-emerald-700/50",
+    "The Era of Blood": "bg-red-900/50 text-red-300 border-red-700/50",
+    "The Dark Era": "bg-purple-900/50 text-purple-300 border-purple-700/50",
+    "The Dormant Era": "bg-slate-700/50 text-slate-300 border-slate-600/50",
+    "Strahd's Awakening": "bg-rose-900/50 text-rose-300 border-rose-700/50",
+    // Legacy categories
     "The Dark Powers": "bg-purple-900/50 text-purple-300 border-purple-700/50",
     "Strahd's History": "bg-red-900/50 text-red-300 border-red-700/50",
     Barovia: "bg-amber-900/50 text-amber-300 border-amber-700/50",
@@ -83,7 +114,7 @@ function isHighlighted(event) {
   if (!searchQuery.value) return false;
   const query = searchQuery.value.toLowerCase();
   return (
-    String(event.year).toLowerCase().includes(query) ||
+    formatDate(event).toLowerCase().includes(query) ||
     event.title.toLowerCase().includes(query) ||
     event.description.toLowerCase().includes(query)
   );
@@ -92,6 +123,8 @@ function isHighlighted(event) {
 function openCreateModal() {
   editingEvent.value = null;
   formYear.value = 0;
+  formMonth.value = null;
+  formDay.value = null;
   formTitle.value = "";
   formDescription.value = "";
   formCategory.value = "";
@@ -101,6 +134,8 @@ function openCreateModal() {
 function openEditModal(event) {
   editingEvent.value = event;
   formYear.value = event.year;
+  formMonth.value = event.month || null;
+  formDay.value = event.day || null;
   formTitle.value = event.title;
   formDescription.value = event.description;
   formCategory.value = event.category || "";
@@ -114,21 +149,21 @@ function closeModal() {
 
 async function handleSubmit() {
   if (!formTitle.value.trim() || !formDescription.value.trim()) return;
+  const payload = {
+    year: formYear.value,
+    month: formMonth.value || null,
+    day: formDay.value || null,
+    title: formTitle.value,
+    description: formDescription.value,
+    category: formCategory.value || undefined,
+  };
   try {
     if (editingEvent.value) {
-      await timelineStore.updateEvent(editingEvent.value._id, {
-        year: formYear.value,
-        title: formTitle.value,
-        description: formDescription.value,
-        category: formCategory.value || undefined,
-      });
+      await timelineStore.updateEvent(editingEvent.value._id, payload);
     } else {
       await timelineStore.createEvent({
+        ...payload,
         campaignId: campaignStore.activeCampaign._id,
-        year: formYear.value,
-        title: formTitle.value,
-        description: formDescription.value,
-        category: formCategory.value || undefined,
       });
     }
     closeModal();
@@ -214,31 +249,29 @@ async function deleteEvent(eventId, e) {
 
     <!-- Timeline -->
     <div v-else class="relative">
-      <!-- Vertical line -->
-      <div class="absolute left-4 sm:left-20 top-0 bottom-0 w-0.5 bg-strahd-gold/30"></div>
+      <div class="absolute left-4 sm:left-24 top-0 bottom-0 w-0.5 bg-strahd-gold/30"></div>
 
-      <!-- Events -->
       <div class="space-y-8">
         <div
           v-for="event in filteredEvents"
           :key="event._id"
           :id="`event-${event._id}`"
-          class="timeline-event relative pl-10 sm:pl-24 animate-slide-up group"
+          class="timeline-event relative pl-10 sm:pl-28 animate-slide-up group"
           :class="{ highlighted: isHighlighted(event) }"
         >
-          <!-- Year on the left -->
-          <div class="hidden sm:block absolute left-0 w-16 text-right text-strahd-gold font-bold text-sm">
-            {{ formatYear(event.year) }}
+          <!-- Date on the left (desktop) -->
+          <div class="hidden sm:block absolute left-0 w-20 text-right text-strahd-gold font-bold text-xs leading-tight">
+            {{ formatDate(event) }}
           </div>
 
           <!-- Timeline dot -->
-          <div class="absolute left-[0.875rem] sm:left-[4.625rem] w-4 h-4 sm:w-5 sm:h-5 bg-strahd-red border-4 border-strahd-dark rounded-full shadow-glow-red"></div>
+          <div class="absolute left-[0.875rem] sm:left-[5.625rem] w-4 h-4 sm:w-5 sm:h-5 bg-strahd-red border-4 border-strahd-dark rounded-full shadow-glow-red"></div>
 
           <!-- Event card -->
           <div class="event-card bg-strahd-darker border-2 border-strahd-red/30 rounded-lg p-4 sm:p-6 shadow-xl transition-all duration-300 ml-4 sm:ml-8 relative">
-            <!-- Year (mobile only) -->
+            <!-- Date (mobile only) -->
             <div class="sm:hidden text-strahd-gold font-bold text-xs mb-2">
-              {{ formatYear(event.year) }}
+              {{ formatDate(event) }}
             </div>
 
             <!-- Action buttons -->
@@ -255,13 +288,9 @@ async function deleteEvent(eventId, e) {
               </button>
             </div>
 
-            <!-- Title -->
             <h3 class="text-xl sm:text-2xl font-bold text-strahd-red mb-3 pr-16">{{ event.title }}</h3>
-
-            <!-- Description -->
             <p class="text-gray-300 mb-4">{{ event.description }}</p>
 
-            <!-- Category Badge -->
             <div v-if="event.category" class="inline-block">
               <span class="category-badge px-3 py-1 rounded-full text-xs font-semibold border" :class="getCategoryColor(event.category)">
                 {{ event.category }}
@@ -286,9 +315,27 @@ async function deleteEvent(eventId, e) {
           </button>
         </div>
         <div class="modal-body">
+          <!-- Date fields row -->
           <div class="form-group">
-            <label>Year *</label>
-            <input v-model.number="formYear" type="number" placeholder="e.g., 351 or -500 for BC" autocomplete="off">
+            <label>Date *</label>
+            <div class="date-row">
+              <div class="date-field">
+                <span class="date-label">Year</span>
+                <input v-model.number="formYear" type="number" placeholder="-346" autocomplete="off">
+              </div>
+              <div class="date-field">
+                <span class="date-label">Month</span>
+                <select v-model="formMonth">
+                  <option :value="null">—</option>
+                  <option v-for="(name, idx) in monthNames" :key="idx" :value="idx + 1">{{ name }}</option>
+                </select>
+              </div>
+              <div class="date-field">
+                <span class="date-label">Day</span>
+                <input v-model.number="formDay" type="number" min="1" max="31" placeholder="—" autocomplete="off">
+              </div>
+            </div>
+            <p class="date-hint">Use negative years for BC (e.g. -346 = 346 BC)</p>
           </div>
           <div class="form-group">
             <label>Title *</label>
@@ -299,7 +346,7 @@ async function deleteEvent(eventId, e) {
             <textarea v-model="formDescription" placeholder="What happened?" rows="4" autocomplete="off"></textarea>
           </div>
           <div class="form-group">
-            <label>Category</label>
+            <label>Era</label>
             <select v-model="formCategory">
               <option value="">None</option>
               <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
@@ -369,7 +416,6 @@ async function deleteEvent(eventId, e) {
   transform: none;
 }
 
-/* Event action buttons */
 .event-actions {
   position: absolute;
   top: 0.75rem;
@@ -411,6 +457,37 @@ async function deleteEvent(eventId, e) {
   border-color: #dc2626;
 }
 
+/* Date fields */
+.date-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.date-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-field:first-child {
+  flex: 1.2;
+}
+
+.date-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.date-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
 /* Modal styles */
 .modal-overlay {
   position: fixed;
@@ -431,7 +508,7 @@ async function deleteEvent(eventId, e) {
   border: 2px solid #8b0000;
   border-radius: 12px;
   width: 100%;
-  max-width: 500px;
+  max-width: 550px;
   box-shadow: 0 0 30px rgba(139, 0, 0, 0.5);
   max-height: 90vh;
   overflow-y: auto;

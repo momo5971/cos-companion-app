@@ -11,6 +11,14 @@ const timelineSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    month: {
+      type: Number,
+      default: null,
+    },
+    day: {
+      type: Number,
+      default: null,
+    },
     title: {
       type: String,
       required: true,

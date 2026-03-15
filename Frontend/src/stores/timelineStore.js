@@ -23,11 +23,22 @@ export const useTimelineStore = defineStore("timeline", () => {
     }
   }
 
+  function sortEvents() {
+    events.value.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      const am = a.month ?? 0;
+      const bm = b.month ?? 0;
+      if (am !== bm) return am - bm;
+      const ad = a.day ?? 0;
+      const bd = b.day ?? 0;
+      return ad - bd;
+    });
+  }
+
   async function createEvent(data) {
     const created = await timelineService.createTimelineEvent(data);
-    // Insert in sorted position by year
     events.value.push(created);
-    events.value.sort((a, b) => a.year - b.year);
+    sortEvents();
     return created;
   }
 
@@ -35,7 +46,7 @@ export const useTimelineStore = defineStore("timeline", () => {
     const updated = await timelineService.updateTimelineEvent(id, data);
     const idx = events.value.findIndex((e) => e._id === id);
     if (idx !== -1) events.value[idx] = updated;
-    events.value.sort((a, b) => a.year - b.year);
+    sortEvents();
     return updated;
   }
 

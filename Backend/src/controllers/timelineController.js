@@ -10,6 +10,9 @@ export const getAllTimelineEvents = async (req, res) => {
 
     const timelineEvents = await Timeline.find({ campaignId }).sort({
       year: 1,
+      month: 1,
+      day: 1,
+      order: 1,
     });
     res.status(200).json(timelineEvents);
   } catch (error) {
@@ -23,7 +26,16 @@ export const getAllTimelineEvents = async (req, res) => {
 
 export const createTimelineEvent = async (req, res) => {
   try {
-    const { campaignId, year, title, description, category, order } = req.body;
+    const {
+      campaignId,
+      year,
+      month,
+      day,
+      title,
+      description,
+      category,
+      order,
+    } = req.body;
     if (!campaignId || year == null || !title || !description) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -31,6 +43,8 @@ export const createTimelineEvent = async (req, res) => {
     const event = await Timeline.create({
       campaignId,
       year,
+      month: month ?? null,
+      day: day ?? null,
       title,
       description,
       category,
