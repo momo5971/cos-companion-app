@@ -26,6 +26,7 @@ const campaignStore = useCampaignStore();
 const formData = ref({
   name: "",
   description: "",
+  order: 0,
 });
 
 const isSubmitting = ref(false);
@@ -37,11 +38,13 @@ watch(() => props.section, (newSection) => {
     formData.value = {
       name: newSection.name || "",
       description: newSection.description || "",
+      order: newSection.order ?? 0,
     };
   } else {
     formData.value = {
       name: "",
       description: "",
+      order: sectionStore.sections.length,
     };
   }
 }, { immediate: true });
@@ -71,6 +74,7 @@ async function handleSubmit() {
     formData.value = {
       name: "",
       description: "",
+      order: sectionStore.sections.length,
     };
   } catch (error) {
     console.error(`Error ${isEditMode.value ? 'updating' : 'creating'} section:`, error);
@@ -83,6 +87,7 @@ function handleClose() {
   formData.value = {
     name: "",
     description: "",
+    order: sectionStore.sections.length,
   };
   emit("close");
 }
@@ -107,6 +112,17 @@ function handleClose() {
             type="text"
             placeholder="e.g., Main Hall, Upper Floor, Basement"
             required autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="order">Order Number</label>
+          <input
+            id="order"
+            v-model.number="formData.order"
+            type="number"
+            min="0"
+            placeholder="0"
+            autocomplete="off">
         </div>
 
         <div class="form-group">

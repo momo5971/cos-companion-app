@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useSectionStore } from "../../stores/sectionStore";
 import { useDecisionNodeStore } from "../../stores/decisionNodeStore";
 
@@ -23,6 +23,39 @@ const emit = defineEmits(["node-selected", "create-section", "edit-section", "de
 const sectionStore = useSectionStore();
 const decisionNodeStore = useDecisionNodeStore();
 const collapsedSections = ref(new Set());
+
+// localStorage key for this quest's open sections
+const storageKey = computed(() => `flowchart-open-sections-${props.questId}`);
+
+// Load persisted open sections from localStorage
+function loadOpenSections() {
+  try {
+    const saved = localStorage.getItem(storageKey.value);
+    if (saved) {
+      const openNames = JSON.parse(saved);
+      // Start with all collapsed, then open only the saved ones
+      const allNames = allSections.value.map(s => s.name);
+      const closed = new Set(allNames.filter(n => !openNames.includes(n)));
+      collapsedSections.value = closed;
+      return true;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+// Save which sections are open to localStorage
+function saveOpenSections() {
+  try {
+    const openNames = allSections.value
+      .map(s => s.name)
+      .filter(n => !collapsedSections.value.has(n));
+    localStorage.setItem(storageKey.value, JSON.stringify(openNames));
+  } catch (e) {
+    // ignore
+  }
+}
 
 // Group nodes by section
 const nodesBySection = computed(() => {
@@ -71,12 +104,27 @@ const allSections = computed(() => {
   return sections.sort((a, b) => a.order - b.order);
 });
 
+// When sections load, initialize collapse state
+let initialized = false;
+watch(allSections, (sections) => {
+  if (!initialized && sections.length > 0) {
+    initialized = true;
+    const hadSaved = loadOpenSections();
+    if (!hadSaved) {
+      // Default: all sections collapsed
+      collapsedSections.value = new Set(sections.map(s => s.name));
+    }
+  }
+}, { immediate: true });
+
 function toggleSection(sectionName) {
   if (collapsedSections.value.has(sectionName)) {
     collapsedSections.value.delete(sectionName);
   } else {
     collapsedSections.value.add(sectionName);
   }
+  // Persist after toggle
+  saveOpenSections();
 }
 
 function getNodeIcon(nodeType) {
@@ -159,7 +207,10 @@ onMounted(() => {
           <span class="section-toggle">
             {{ collapsedSections.has(section.name) ? "▶" : "▼" }}
           </span>
-          <span class="section-name">{{ section.name }}</span>
+          <span class="section-name">
+            <span v-if="section.fromStore" class="section-order">{{ section.order }}.</span>
+            {{ section.name }}
+          </span>
           <span class="section-count">
             {{ nodesBySection[section.name]?.length || 0 }}
           </span>
@@ -321,6 +372,12 @@ onMounted(() => {
   font-family: "Cinzel", serif;
 }
 
+.section-order {
+  color: #888;
+  font-size: 0.8em;
+  margin-right: 0.25rem;
+}
+
 .section-count {
   color: #888;
   font-size: 0.875rem;
@@ -335,6 +392,15 @@ onMounted(() => {
   margin-left: auto;
   opacity: 0;
   transition: opacity 0.2s;
+}
+
+@media (hover: none) {
+  .section-actions {
+    opacity: 1;
+  }
+  .node-actions {
+    opacity: 1;
+  }
 }
 
 .section-action-btn {
